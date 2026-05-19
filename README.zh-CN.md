@@ -173,12 +173,12 @@ android/app/src/main/kotlin/app/zerorelay/
 
 将本仓库推送到 **GitHub 公开仓库** 后，在 **`server/`** 目录使用官方 [Deploy to Cloudflare](https://developers.cloudflare.com/workers/platform/deploy-buttons/) 按钮：登录 Cloudflare → 授权 Git → 自动创建 Worker、**KV**、编译网页并部署（**同一 HTTPS 地址** 同时提供 API 与 Web 聊天界面）。
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USER/YOUR_REPO/tree/main/server)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
 
 部署完成后，用浏览器打开 `https://<你的-worker>.workers.dev` 即可使用（无需再建 Pages）。健康检查：`curl https://<你的-worker>.workers.dev/health`。
 
-> 将 `YOUR_USER/YOUR_REPO` 换成你的仓库；默认分支不是 `main` 时请改路径中的分支名。  
-> 本地生成正确链接：`./scripts/deploy-button-url.sh`（需已 `git remote add origin …`）。
+> **不要用 Pages 一键部署 `web/`** — Cloudflare 官方 Deploy 按钮不支持纯 Pages 项目；本仓库把网页打进 Worker（`server/public`）。  
+> 若你 fork 了仓库，可用 `./scripts/deploy-button-url.sh` 生成指向你 fork 的按钮链接。
 
 **按钮部署流程概要：**
 

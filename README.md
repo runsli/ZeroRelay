@@ -162,12 +162,12 @@ Production: **Cloudflare Workers + KV** relay; clients use **HTTPS / WSS** (`POS
 
 Push this repo to a **public GitHub** repository, then use the official [Deploy to Cloudflare](https://developers.cloudflare.com/workers/platform/deploy-buttons/) button on **`server/`**: sign in → authorize Git → auto-create Worker, **KV namespace**, build the web app, and deploy (relay API + static web UI on **one HTTPS URL**).
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/YOUR_USER/YOUR_REPO/tree/main/server)
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
 
-After deploy, open `https://<your-worker>.workers.dev` in a browser — the chat UI loads and uses the same host as the relay (no separate Pages project required). Health check: `curl https://<your-worker>.workers.dev/health`.
+After deploy, open `https://<your-worker>.workers.dev` in a browser — the chat UI loads and uses the same host as the relay (**no Cloudflare Pages project**). Health check: `curl https://<your-worker>.workers.dev/health`.
 
-> Replace `YOUR_USER/YOUR_REPO` and branch name if not `main`.  
-> Generate the correct URL: `./scripts/deploy-button-url.sh` (requires `git remote add origin …`).
+> **Do not** use a Pages-only deploy for `web/` — Cloudflare’s Deploy button does not support that. This repo bundles the web UI into the Worker (`server/public`).  
+> Fork? Regenerate the button URL: `./scripts/deploy-button-url.sh`
 
 **Flow:**
 
