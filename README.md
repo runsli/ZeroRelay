@@ -224,7 +224,7 @@ Clients: emulator `http://10.0.2.2:8787`; device `http://<LAN-IP>:8787` (same Wi
 #### Prerequisites
 
 - [Cloudflare](https://dash.cloudflare.com) account
-- Node.js **≥ 16.17** (20 LTS recommended)
+- Node.js **≥ 22** (Wrangler 4; 22 LTS recommended)
 - Wrangler via `cd server && npm install`
 
 #### Step 1: Wrangler login

@@ -11,7 +11,7 @@
     }
   },
   "engines": {
-    "node": ">=16.17.0"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "build:web": "npm --prefix ../web ci && npm --prefix ../web run build",
@@ -33,6 +33,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260516.1",
     "typescript": "^5.9.3",
-    "wrangler": "^3.114.17"
+    "wrangler": "^4.92.0"
   }
 }

@@ -240,7 +240,7 @@ npm run test:interop
 #### 前置条件
 
 - [Cloudflare](https://dash.cloudflare.com) 账号
-- Node.js **≥ 16.17**（建议 20 LTS）
+- Node.js **≥ 22**（Wrangler 4；建议 22 LTS）
 - 已安装 Wrangler CLI（`server` 目录 `npm install` 会带上 `wrangler`）
 
 #### 步骤 1：登录 Wrangler
