@@ -53,6 +53,7 @@ fun semverToVersionCode(versionName: String): Int {
 }
 
 fun resolveVersionName(): String {
+    versionProperties.getProperty("versionName")?.takeIf { it.isNotBlank() }?.let { return it }
     (findProperty("versionName") as String?)?.takeIf { it.isNotBlank() }?.let { return it }
     System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() }?.let { return it }
     runGit("describe", "--tags", "--exact-match", "HEAD")?.let { return normalizeTag(it) }
@@ -60,6 +61,7 @@ fun resolveVersionName(): String {
 }
 
 fun resolveVersionCode(versionName: String): Int {
+    versionProperties.getProperty("versionCode")?.toIntOrNull()?.let { return it }
     (findProperty("versionCode")?.toString())?.toIntOrNull()?.let { return it }
     System.getenv("VERSION_CODE")?.toIntOrNull()?.let { return it }
     return semverToVersionCode(versionName)
@@ -70,7 +72,12 @@ val appVersionCode: Int = resolveVersionCode(appVersionName)
 
 android {
     namespace = "app.zerorelay"
-    compileSdk = 37
+    // API 37 is installed as platforms/android-37.0; minorApiLevel selects that path (CI + sdkmanager).
+    compileSdk {
+        version = release(37) {
+            minorApiLevel = 0
+        }
+    }
 
     defaultConfig {
         applicationId = "app.zerorelay"
@@ -124,6 +131,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

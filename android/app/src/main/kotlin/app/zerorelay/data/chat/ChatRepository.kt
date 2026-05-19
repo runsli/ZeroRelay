@@ -338,7 +338,7 @@ class ChatRepository(
                 try {
                     val token = roomAccessToken ?: break
                     val timeoutMs = ProtocolPolicy.POLL_TIMEOUT_MS
-                    val frame = RelayTunnel.encodePoll(token, lastPollTimestamp, timeoutMs)
+                    val frame = RelayTunnel.encodePoll(token, lastPollTimestamp, timeoutMs.toInt())
                     val request = Request.Builder()
                         .url("$base/t")
                         .post(frame.toRequestBody("application/octet-stream".toMediaType()))

@@ -10,7 +10,7 @@ import com.google.zxing.FormatException
 import com.google.zxing.NotFoundException
 import com.google.zxing.MultiFormatReader
 import com.google.zxing.common.HybridBinarizer
-import com.google.zxing.common.PlanarYUVLuminanceSource
+import com.google.zxing.PlanarYUVLuminanceSource
 import java.nio.ByteBuffer
 
 /**
