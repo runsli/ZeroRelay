@@ -1,0 +1,82 @@
+# Compile-check Release APK on CI (debug signing). Official installs use the
+# maintainer-built APK uploaded manually to GitHub Releases — see README.
+name: Android build (CI)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify no signing keys in repository
+        run: bash scripts/verify-no-signing-in-repo.sh
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/libs.versions.toml
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x android/gradlew
+
+      - name: Write local.properties
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+
+      - name: Resolve Android version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            # shellcheck disable=SC1091
+            source scripts/android-version-from-tag.sh "${GITHUB_REF#refs/tags/}"
+          else
+            export VERSION_NAME="1.0.0"
+            export VERSION_CODE="${GITHUB_RUN_NUMBER}"
+          fi
+          echo "VERSION_NAME=${VERSION_NAME}" >> "${GITHUB_ENV}"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "${GITHUB_ENV}"
+          echo "Resolved versionName=${VERSION_NAME} versionCode=${VERSION_CODE}"
+
+      - name: Build release APK (debug signing on CI)
+        working-directory: android
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          APK_DIR=android/app/build/outputs/apk/release
+          SHA="${GITHUB_SHA::7}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            OUT="zerorelay-${GITHUB_REF_NAME}-ci-debug.apk"
+          else
+            OUT="zerorelay-${VERSION_NAME}-${SHA}-ci-debug.apk"
+          fi
+          cp "${APK_DIR}/app-release.apk" "${OUT}"
+          echo "APK_OUT=${OUT}" >> "${GITHUB_ENV}"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: ${{ env.APK_OUT }}
+          if-no-files-found: error
+          retention-days: 14

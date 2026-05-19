@@ -1,0 +1,38 @@
+{
+  "name": "zero-relay-server",
+  "version": "1.0.0",
+  "private": true,
+  "cloudflare": {
+    "label": "ZeroRelay (relay + web UI)",
+    "bindings": {
+      "MESSAGE_KV": {
+        "description": "Stores **ciphertext only** for relay delivery. Created automatically when using Deploy to Cloudflare."
+      }
+    }
+  },
+  "engines": {
+    "node": ">=16.17.0"
+  },
+  "scripts": {
+    "build:web": "npm --prefix ../web ci && npm --prefix ../web run build",
+    "build": "npm run build:web && npm run check",
+    "dev": "wrangler dev",
+    "deploy": "npm run build:web && wrangler deploy",
+    "start": "node server-local.js",
+    "start:log": "TRANSPORT_LOG=1 node server-local.js",
+    "start:quiet": "TRANSPORT_LOG=0 node server-local.js",
+    "start:terminal": "bash scripts/start-log-terminal.sh",
+    "check": "tsc -p .",
+    "audit": "npm audit --audit-level=high"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.1",
+    "hono": "^4.12.19",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260516.1",
+    "typescript": "^5.9.3",
+    "wrangler": "^3.114.17"
+  }
+}

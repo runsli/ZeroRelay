@@ -1,0 +1,554 @@
+package app.zerorelay.ui.home
+
+import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
+import androidx.annotation.StringRes
+import androidx.lifecycle.AndroidViewModel
+import app.zerorelay.R
+import androidx.lifecycle.viewModelScope
+import app.zerorelay.data.chat.RelayMessagingHub
+import app.zerorelay.data.crypto.ContactExchange
+import app.zerorelay.data.crypto.GroupExchange
+import app.zerorelay.data.crypto.MessageCipher
+import app.zerorelay.data.crypto.RatchetBackup
+import app.zerorelay.data.crypto.RatchetBackupFiles
+import app.zerorelay.data.identity.IdentityStore
+import app.zerorelay.data.local.UserPreferences
+import app.zerorelay.data.model.ChatGroup
+import app.zerorelay.data.model.ChatSession
+import app.zerorelay.data.model.Contact
+import app.zerorelay.data.model.Identity
+import app.zerorelay.data.network.RelayHttpClient
+import app.zerorelay.data.network.RelaySecurityPolicy
+import app.zerorelay.data.network.ServerHealth
+import app.zerorelay.data.network.ServerUrl
+import app.zerorelay.data.session.SessionFactory
+import app.zerorelay.ui.notification.MessageNotificationController
+import app.zerorelay.ui.snackbar.AppSnackbarBus
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+enum class HomeTab {
+    Contacts,
+    Groups,
+}
+
+sealed class ScanHandleResult {
+    data object ContactAdded : ScanHandleResult()
+    data class GroupJoined(val session: ChatSession) : ScanHandleResult()
+    data class Error(val message: String) : ScanHandleResult()
+}
+
+sealed class PasteResult {
+    data object ContactAdded : PasteResult()
+    data class GroupJoined(val session: ChatSession) : PasteResult()
+    data object Failed : PasteResult()
+}
+
+data class HomeUiState(
+    val serverUrl: String = ServerUrl.EMULATOR_DEFAULT,
+    val identity: Identity? = null,
+    val contacts: List<Contact> = emptyList(),
+    val groups: List<ChatGroup> = emptyList(),
+    val selectedTab: HomeTab = HomeTab.Contacts,
+    val myQrPayload: String = "",
+    val error: String? = null,
+    val showMyQr: Boolean = false,
+    val showPasteDialog: Boolean = false,
+    val pasteText: String = "",
+    val showCreateGroup: Boolean = false,
+    val createGroupName: String = "",
+    val createGroupMemberIds: Set<String> = emptySet(),
+    val inviteGroup: ChatGroup? = null,
+    val serverChecking: Boolean = false,
+    val serverCheckOk: Boolean? = null,
+    val tlsPinned: Boolean = false,
+    /** 证书轮换：待用户确认的新 pin */
+    val pendingTlsPin: String? = null,
+    val showRatchetBackupDialog: Boolean = false,
+    val ratchetBackupPassphrase: String = "",
+    /** 打开私聊前：未验证联系人安全码确认 */
+    val verifyContactDialog: Contact? = null,
+    /** Material You 动态配色；关闭时使用 #0F9D47 品牌主题。 */
+    val useDynamicColor: Boolean = true,
+    /** 为 true 时允许系统截图/录屏聊天界面。 */
+    val allowScreenshots: Boolean = true,
+)
+
+class HomeViewModel(application: Application) : AndroidViewModel(application) {
+    private val identityStore = IdentityStore(application)
+    private val prefs = UserPreferences(application)
+
+    private fun appStr(@StringRes resId: Int, vararg args: Any): String =
+        getApplication<Application>().getString(resId, *args)
+
+    private val _uiState = MutableStateFlow(HomeUiState())
+    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    init {
+        MessageNotificationController.start(application)
+        viewModelScope.launch {
+            val identity = identityStore.getOrCreateIdentity()
+            val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
+            val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
+            _uiState.update {
+                it.copy(
+                    identity = identity,
+                    serverUrl = server,
+                    contacts = identityStore.getContacts(),
+                    groups = identityStore.getGroups(),
+                    myQrPayload = qr,
+                    useDynamicColor = prefs.getUseDynamicColor(),
+                    allowScreenshots = prefs.getAllowScreenshots(),
+                    tlsPinned = RelayHttpClient.hasPin(getApplication(), server),
+                )
+            }
+        }
+    }
+
+    fun onServerUrlChange(value: String) = _uiState.update {
+        it.copy(serverUrl = value, error = null, serverCheckOk = null)
+    }
+
+    fun selectTab(tab: HomeTab) = _uiState.update { it.copy(selectedTab = tab, error = null) }
+
+    fun saveServerUrl() {
+        val url = ServerUrl.normalize(_uiState.value.serverUrl)
+        if (url.isEmpty()) {
+            _uiState.update { it.copy(error = appStr(R.string.error_server_required)) }
+            return
+        }
+        if (RelaySecurityPolicy.requiresTlsPin(url) && !RelayHttpClient.hasPin(getApplication(), url)) {
+            _uiState.update { it.copy(error = appStr(R.string.error_release_tls_pin_required)) }
+            return
+        }
+        prefs.setServerUrl(url)
+        _uiState.update { it.copy(serverUrl = url, serverCheckOk = null) }
+    }
+
+    fun testServerConnection() {
+        viewModelScope.launch {
+            val raw = _uiState.value.serverUrl
+            _uiState.update { it.copy(serverChecking = true, error = null, serverCheckOk = null) }
+            ServerHealth.check(getApplication(), raw)
+                .onSuccess { result ->
+                    prefs.setServerUrl(result.normalizedUrl)
+                    _uiState.update {
+                        it.copy(
+                            serverUrl = result.normalizedUrl,
+                            serverChecking = false,
+                            serverCheckOk = true,
+                            error = null,
+                            pendingTlsPin = null,
+                            tlsPinned = RelayHttpClient.hasPin(getApplication(), result.normalizedUrl),
+                        )
+                    }
+                    AppSnackbarBus.show(
+                        if (RelayHttpClient.hasPin(getApplication(), result.normalizedUrl)) {
+                            appStr(R.string.snackbar_connection_pinned)
+                        } else {
+                            appStr(R.string.snackbar_connection_ok)
+                        },
+                    )
+                }
+                .onFailure { e ->
+                    when (e) {
+                        is ServerHealth.CertificatePinMismatchException -> {
+                            _uiState.update {
+                                it.copy(
+                                    serverChecking = false,
+                                    serverCheckOk = false,
+                                    pendingTlsPin = e.newPin,
+                                    error = appStr(R.string.error_tls_changed),
+                                )
+                            }
+                        }
+                        else -> {
+                            _uiState.update {
+                                it.copy(
+                                    serverChecking = false,
+                                    serverCheckOk = false,
+                                    error = appStr(
+                                        R.string.error_server_unreachable,
+                                        e.message ?: appStr(R.string.error_unknown),
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    fun refreshContacts() {
+        _uiState.update { it.copy(contacts = identityStore.getContacts(), error = null) }
+    }
+
+    fun refreshGroups() {
+        _uiState.update { it.copy(groups = identityStore.getGroups(), error = null) }
+    }
+
+    fun openMyQr() = _uiState.update { it.copy(showMyQr = true) }
+
+    fun closeMyQr() = _uiState.update { it.copy(showMyQr = false) }
+
+    fun openPasteDialog() = _uiState.update { it.copy(showPasteDialog = true, pasteText = "", error = null) }
+
+    fun closePasteDialog() = _uiState.update { it.copy(showPasteDialog = false, pasteText = "") }
+
+    fun onPasteTextChange(value: String) = _uiState.update { it.copy(pasteText = value) }
+
+    fun openCreateGroup() = _uiState.update {
+        it.copy(
+            showCreateGroup = true,
+            createGroupName = "",
+            createGroupMemberIds = emptySet(),
+            error = null,
+        )
+    }
+
+    fun closeCreateGroup() = _uiState.update {
+        it.copy(showCreateGroup = false, createGroupName = "", createGroupMemberIds = emptySet())
+    }
+
+    fun onCreateGroupNameChange(value: String) = _uiState.update { it.copy(createGroupName = value) }
+
+    fun toggleCreateGroupMember(contactId: String) {
+        _uiState.update { state ->
+            val next = state.createGroupMemberIds.toMutableSet()
+            if (!next.add(contactId)) next.remove(contactId)
+            state.copy(createGroupMemberIds = next)
+        }
+    }
+
+    fun unverifiedCreateGroupMembers(): List<Contact> {
+        val ids = _uiState.value.createGroupMemberIds
+        return _uiState.value.contacts.filter { it.id in ids && !it.verified }
+    }
+
+    fun showVerifyContactDialog(contact: Contact) =
+        _uiState.update { it.copy(verifyContactDialog = contact, error = null) }
+
+    fun dismissVerifyContactDialog() = _uiState.update { it.copy(verifyContactDialog = null) }
+
+    fun markVerifiedAndCreateSession(contactId: String): ChatSession? {
+        identityStore.markContactVerified(contactId)
+        refreshContacts()
+        dismissVerifyContactDialog()
+        return _uiState.value.contacts.find { it.id == contactId }?.let { createSession(it) }
+    }
+
+    fun createSessionAllowingUnverified(contact: Contact): ChatSession? {
+        dismissVerifyContactDialog()
+        return createSession(contact)
+    }
+
+    fun confirmCreateGroup(): Boolean {
+        val name = _uiState.value.createGroupName
+        return try {
+            val group = identityStore.createGroup(name, _uiState.value.createGroupMemberIds.toList())
+            refreshGroups()
+            _uiState.update {
+                it.copy(
+                    showCreateGroup = false,
+                    createGroupName = "",
+                    createGroupMemberIds = emptySet(),
+                    inviteGroup = group,
+                    selectedTab = HomeTab.Groups,
+                    error = null,
+                )
+            }
+            true
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_create_group)) }
+            false
+        }
+    }
+
+    fun closeGroupInvite() = _uiState.update { it.copy(inviteGroup = null) }
+
+    fun showGroupInvite(group: ChatGroup) = _uiState.update { it.copy(inviteGroup = group) }
+
+    fun addFromPaste(): PasteResult {
+        val raw = _uiState.value.pasteText
+        GroupExchange.parse(raw)?.let { payload ->
+            return try {
+                val session = joinGroupAndCreateSession(payload)
+                _uiState.update {
+                    it.copy(
+                        showPasteDialog = false,
+                        pasteText = "",
+                        selectedTab = HomeTab.Groups,
+                        error = null,
+                    )
+                }
+                PasteResult.GroupJoined(session)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_join_group)) }
+                PasteResult.Failed
+            }
+        }
+        val contactPayload = ContactExchange.parse(raw) ?: run {
+            _uiState.update { it.copy(error = appStr(R.string.error_parse_invite)) }
+            return PasteResult.Failed
+        }
+        return if (addContactPayload(contactPayload)) {
+            PasteResult.ContactAdded
+        } else {
+            PasteResult.Failed
+        }
+    }
+
+    fun handleScan(raw: String): ScanHandleResult {
+        if (_uiState.value.identity == null) {
+            return ScanHandleResult.Error(appStr(R.string.error_not_ready))
+        }
+        GroupExchange.parse(raw)?.let { payload ->
+            return try {
+                val session = joinGroupAndCreateSession(payload)
+                _uiState.update { it.copy(selectedTab = HomeTab.Groups, error = null) }
+                ScanHandleResult.GroupJoined(session)
+            } catch (e: Exception) {
+                val msg = e.message ?: appStr(R.string.error_join_group)
+                _uiState.update { it.copy(error = msg) }
+                ScanHandleResult.Error(msg)
+            }
+        }
+        val contactPayload = ContactExchange.parse(raw)
+            ?: run {
+                val msg = appStr(R.string.error_scan_unrecognized)
+                _uiState.update { it.copy(error = msg) }
+                return ScanHandleResult.Error(msg)
+            }
+        return if (addContactPayload(contactPayload)) {
+            ScanHandleResult.ContactAdded
+        } else {
+            ScanHandleResult.Error(_uiState.value.error ?: appStr(R.string.error_add_failed))
+        }
+    }
+
+    private fun addContactPayload(payload: ContactExchange.Payload): Boolean {
+        return try {
+            identityStore.addContactFromPayload(payload)
+            refreshContacts()
+            _uiState.update { it.copy(showPasteDialog = false, pasteText = "", error = null) }
+            true
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_add_failed)) }
+            false
+        }
+    }
+
+    fun markContactVerified(contactId: String) {
+        identityStore.markContactVerified(contactId)
+        refreshContacts()
+        AppSnackbarBus.show(appStr(R.string.snackbar_contact_verified))
+    }
+
+    fun deleteContact(id: String) {
+        identityStore.deleteContact(id)
+        refreshContacts()
+    }
+
+    fun deleteGroup(id: String) {
+        identityStore.deleteGroup(id)
+        refreshGroups()
+    }
+
+    fun trustPendingTlsPin() {
+        val pin = _uiState.value.pendingTlsPin ?: return
+        val url = _uiState.value.serverUrl
+        RelayHttpClient.trustNewPin(getApplication(), url, pin)
+        _uiState.update {
+            it.copy(
+                pendingTlsPin = null,
+                tlsPinned = true,
+                serverCheckOk = true,
+                error = null,
+            )
+        }
+        AppSnackbarBus.show(appStr(R.string.snackbar_tls_trusted))
+    }
+
+    fun dismissPendingTlsPin() {
+        _uiState.update { it.copy(pendingTlsPin = null, error = null) }
+    }
+
+    fun showRatchetBackup(show: Boolean) = _uiState.update { it.copy(showRatchetBackupDialog = show) }
+
+    fun onRatchetPassphraseChange(value: String) = _uiState.update { it.copy(ratchetBackupPassphrase = value) }
+
+    fun prepareRatchetExport(): Boolean = validateRatchetPassphrase(_uiState.value.ratchetBackupPassphrase)
+
+    private fun validateRatchetPassphrase(pass: String): Boolean {
+        if (pass.length < 8) {
+            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_passphrase)) }
+            return false
+        }
+        return true
+    }
+
+    private fun buildRatchetExportBlob(pass: String): String? {
+        if (!validateRatchetPassphrase(pass)) return null
+        val cipher = MessageCipher(getApplication())
+        return RatchetBackup.encryptExport(pass.toCharArray(), cipher.exportAllRatchetsJson())
+    }
+
+    fun exportRatchetBackupToUri(uri: Uri, passphrase: String): Boolean {
+        val blob = buildRatchetExportBlob(passphrase) ?: return false
+        val ok = RatchetBackupFiles.write(getApplication(), uri, blob)
+        if (!ok) {
+            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_write)) }
+            return false
+        }
+        _uiState.update {
+            it.copy(
+                showRatchetBackupDialog = false,
+                ratchetBackupPassphrase = "",
+            )
+        }
+        AppSnackbarBus.show(appStr(R.string.snackbar_ratchet_exported))
+        return true
+    }
+
+    fun importRatchetBackupFromUri(uri: Uri, passphrase: String): Boolean {
+        if (!validateRatchetPassphrase(passphrase)) return false
+        val blob = RatchetBackupFiles.read(getApplication(), uri)
+        if (blob == null) {
+            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_read)) }
+            return false
+        }
+        return importRatchetBackup(blob)
+    }
+
+    fun exportRatchetBackupToClipboard(): Boolean {
+        val pass = _uiState.value.ratchetBackupPassphrase
+        val blob = buildRatchetExportBlob(pass) ?: return false
+        val cm = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText("zerorelay-ratchet-backup", blob))
+        _uiState.update {
+            it.copy(
+                showRatchetBackupDialog = false,
+                ratchetBackupPassphrase = "",
+            )
+        }
+        AppSnackbarBus.show(appStr(R.string.snackbar_ratchet_clipboard))
+        return true
+    }
+
+    fun importRatchetBackupFromClipboard(): Boolean {
+        val cm = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val blob = cm.primaryClip?.getItemAt(0)?.text?.toString()?.trim().orEmpty()
+        if (blob.isEmpty()) {
+            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_clipboard_empty)) }
+            return false
+        }
+        return importRatchetBackup(blob)
+    }
+
+    fun importRatchetBackup(blob: String): Boolean {
+        val pass = _uiState.value.ratchetBackupPassphrase
+        if (pass.length < 8) {
+            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_passphrase)) }
+            return false
+        }
+        return try {
+            val json = RatchetBackup.decryptImport(pass.toCharArray(), blob.trim())
+            MessageCipher(getApplication()).importAllRatchetsJson(json)
+            _uiState.update {
+                it.copy(
+                    showRatchetBackupDialog = false,
+                    ratchetBackupPassphrase = "",
+                )
+            }
+            AppSnackbarBus.show(appStr(R.string.snackbar_ratchet_restored))
+            true
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(error = appStr(R.string.error_ratchet_restore, e.message ?: appStr(R.string.error_unknown)))
+            }
+            false
+        }
+    }
+
+    fun rotateGroupKey(groupId: String) {
+        try {
+            val group = identityStore.rotateGroupKey(groupId)
+            refreshGroups()
+            _uiState.update { it.copy(inviteGroup = group) }
+            AppSnackbarBus.show(appStr(R.string.snackbar_group_key_rotated))
+        } catch (e: Exception) {
+            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_rotate_key)) }
+        }
+    }
+
+    fun findChatSessionForRoom(roomId: String): ChatSession? {
+        RelayMessagingHub.get(getApplication()).activeSession
+            ?.takeIf { it.roomId == roomId }
+            ?.let { return it }
+        val identity = _uiState.value.identity ?: return null
+        val server = _uiState.value.serverUrl
+        for (contact in _uiState.value.contacts) {
+            SessionFactory.create(server, identity, contact)
+                ?.takeIf { it.roomId == roomId }
+                ?.let { return it }
+        }
+        for (group in _uiState.value.groups) {
+            SessionFactory.createForGroup(server, identity, group)
+                ?.takeIf { it.roomId == roomId }
+                ?.let { return it }
+        }
+        return null
+    }
+
+    fun createSession(contact: Contact): ChatSession? {
+        val identity = _uiState.value.identity ?: return null
+        saveServerUrl()
+        return SessionFactory.create(_uiState.value.serverUrl, identity, contact)
+    }
+
+    fun createGroupSession(group: ChatGroup): ChatSession? {
+        if (group.isInviteExpired()) {
+            _uiState.update { it.copy(error = appStr(R.string.error_group_expired)) }
+            return null
+        }
+        val identity = _uiState.value.identity ?: return null
+        saveServerUrl()
+        return SessionFactory.createForGroup(_uiState.value.serverUrl, identity, group)
+    }
+
+    fun groupInvitePayload(group: ChatGroup): String =
+        GroupExchange.encodeInvite(group, _uiState.value.serverUrl)
+
+    private fun joinGroupAndCreateSession(payload: GroupExchange.InvitePayload): ChatSession {
+        applyServerFromInvite(payload.serverUrl)
+        val group = identityStore.joinGroupFromInvite(payload)
+        refreshGroups()
+        val identity = _uiState.value.identity ?: error(appStr(R.string.error_identity_not_ready))
+        return SessionFactory.createForGroup(_uiState.value.serverUrl, identity, group)
+    }
+
+    private fun applyServerFromInvite(serverUrl: String?) {
+        val relay = serverUrl?.let { ServerUrl.normalize(it) }?.takeIf { it.isNotEmpty() } ?: return
+        prefs.setServerUrl(relay)
+        _uiState.update { it.copy(serverUrl = relay) }
+    }
+
+    fun clearError() = _uiState.update { it.copy(error = null) }
+
+    fun setUseDynamicColor(enabled: Boolean) {
+        prefs.setUseDynamicColor(enabled)
+        _uiState.update { it.copy(useDynamicColor = enabled) }
+    }
+
+    fun setAllowScreenshots(allow: Boolean) {
+        prefs.setAllowScreenshots(allow)
+        _uiState.update { it.copy(allowScreenshots = allow) }
+    }
+}

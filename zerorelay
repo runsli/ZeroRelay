@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Run ZeroRelay CLI from repo root without npm link.
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+cd "$ROOT"
+
+if [[ ! -d node_modules ]]; then
+  echo "[-] 尚未安装依赖。请先执行:" >&2
+  echo "    ./scripts/cli-setup.sh" >&2
+  echo "    或: npm install" >&2
+  exit 1
+fi
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "[-] 未找到 node，请安装 Node.js 18+：https://nodejs.org/" >&2
+  exit 1
+fi
+
+exec node "$ROOT/cli.js" "$@"

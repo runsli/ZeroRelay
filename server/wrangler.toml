@@ -1,0 +1,26 @@
+# 用于 Cloudflare「Deploy to Cloudflare」一键部署与 Workers Builds。
+# 首次部署时平台会自动创建 MESSAGE_KV 并写入 namespace id（fork 后的仓库内）。
+# 本地 CLI 部署：先 `npx wrangler kv namespace create MESSAGE_KV`，将返回的 id 填入下方。
+
+name = "zero-relay-server"
+main = "src/server.ts"
+compatibility_date = "2025-04-08"
+
+# Web UI (Vite build → public/). Same deploy as relay — open the Worker URL in a browser.
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"
+
+[vars]
+ENVIRONMENT = "production"
+MESSAGE_TTL_SEC = "7200"
+MAX_MESSAGES_PER_ROOM = "100"
+RELAY_LOG = "0"
+ENABLE_LEGACY_HTTP = "0"
+
+[[kv_namespaces]]
+binding = "MESSAGE_KV"
+
+[dev]
+port = 8787
+local_protocol = "http"

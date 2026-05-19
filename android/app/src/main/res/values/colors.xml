@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Aligns with Flutter AppTheme.seedColor (#0F9D47) surface tones -->
+    <color name="splash_background">#F6F8FA</color>
+    <color name="splash_accent">#0F9D47</color>
+</resources>

@@ -1,0 +1,60 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+*.tmp
+.DS_Store
+.atom/
+.history
+.svn/
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local environment
+.env
+.env.*
+!.env.example
+.dev.vars
+*.code-workspace
+tmp-*.txt
+
+# Identity keys & contacts (CLI ~/.zero-relay or local exports — never commit)
+.zero-relay/
+identity.json
+contacts.json
+groups.json
+**/identity.json
+**/contacts.json
+**/groups.json
+
+# Android / Gradle
+android/.gradle/
+android/.gradle-home/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties
+!android/keystore.properties.example
+android/release.keystore.jks
+android/captures/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# Server / Cloudflare Workers
+server/node_modules/
+server/.wrangler/
+# 本地覆盖（可选）：复制 wrangler.toml 为 wrangler.local.toml 并用 --config
+server/wrangler.local.toml

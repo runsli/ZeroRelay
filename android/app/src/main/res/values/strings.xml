@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ZeroRelay</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_back">返回</string>
+    <string name="cd_settings">设置</string>
+    <string name="cd_add">添加</string>
+    <string name="cd_more">更多</string>
+    <string name="cd_send">发送</string>
+    <string name="cd_my_qr">我的二维码</string>
+    <string name="cd_scan_qr">扫描二维码</string>
+    <string name="cd_paste_invite">粘贴邀请</string>
+    <string name="cd_create_group">创建群聊</string>
+    <string name="cd_group_invite_qr">群邀请码</string>
+    <string name="cd_qr_image">二维码</string>
+    <string name="cd_leave_chat">退出聊天</string>
+    <string name="cd_e2ee">端到端加密</string>
+    <string name="cd_reconnect">重连</string>
+    <string name="cd_empty_chat">暂无消息</string>
+
+    <!-- Home -->
+    <string name="home_tab_contacts">联系人</string>
+    <string name="home_tab_groups">群聊</string>
+    <string name="home_empty_contacts_title">暂无联系人</string>
+    <string name="home_empty_contacts_subtitle">扫码或粘贴对方公钥后即可单聊</string>
+    <string name="home_empty_groups_title">暂无群聊</string>
+    <string name="home_empty_groups_subtitle">创建群聊并分享邀请码，或扫描他人的群邀请</string>
+    <string name="home_add_my_qr">我的二维码</string>
+    <string name="home_add_scan">扫描二维码</string>
+    <string name="home_add_paste">粘贴邀请</string>
+    <string name="home_add_create_group">创建群聊</string>
+    <string name="home_badge_unverified">未验证</string>
+    <string name="home_contact_verified">已核对安全码</string>
+    <string name="home_contact_unverified_hint">进入前需与对方当面核对安全码</string>
+    <string name="home_menu_mark_verified">标记已验证</string>
+    <string name="home_menu_delete_contact">删除联系人</string>
+    <string name="home_menu_delete_group">删除群聊</string>
+    <string name="home_group_members_join">成员通过邀请加入</string>
+
+    <!-- My QR dialog -->
+    <string name="my_qr_title">我的二维码</string>
+    <string name="my_qr_fingerprint">安全码 %1$s</string>
+    <string name="my_qr_hint">让对方扫码或粘贴公钥，仅需一次</string>
+    <string name="action_close">关闭</string>
+
+    <!-- Group invite -->
+    <string name="group_invite_title">群聊邀请</string>
+    <string name="group_invite_scan_hint">扫码加入「%1$s」</string>
+    <string name="group_invite_need_https">请先在设置中填写云端 https 地址再分享二维码</string>
+    <string name="group_invite_server">已包含服务器：%1$s</string>
+    <string name="group_invite_note">对方需扫码或粘贴邀请链接才会加入（不会自动进群）</string>
+    <string name="action_rotate_key">轮换密钥</string>
+    <string name="action_copy_link">复制链接</string>
+    <string name="action_share">分享</string>
+    <string name="share_group_invite_chooser">分享群邀请</string>
+
+    <!-- Create group -->
+    <string name="create_group_title">创建群聊</string>
+    <string name="create_group_name_label">群名称</string>
+    <string name="create_group_members_hint">可选：勾选联系人作群成员备注（不会自动邀请，需发二维码）</string>
+    <string name="create_group_no_contacts">暂无联系人，仍可创建群并通过邀请码拉人</string>
+    <string name="create_group_unverified_warning">警告：已勾选 %1$d 位未验证联系人，建议先单聊核对安全码后再建群。</string>
+    <string name="action_create">创建</string>
+    <string name="action_cancel">取消</string>
+
+    <!-- Verify contact -->
+    <string name="verify_contact_title">验证联系人</string>
+    <string name="verify_contact_body">请让对方在「我的二维码」或聊天顶栏菜单中出示安全码，与你下方显示的一致后再继续。</string>
+    <string name="verify_contact_fingerprint_label">对方安全码</string>
+    <string name="verify_contact_display_name">备注名：%1$s</string>
+    <string name="verify_contact_confirm">已核对，进入聊天</string>
+    <string name="verify_contact_later">稍后验证</string>
+
+    <!-- Paste invite -->
+    <string name="paste_invite_title">粘贴邀请</string>
+    <string name="paste_invite_placeholder">联系人公钥或群聊邀请链接</string>
+    <string name="action_add">添加</string>
+
+    <!-- Scan -->
+    <string name="scan_qr_title">扫描其他二维码</string>
+    <string name="scan_camera_permission">需要相机权限才能扫描二维码</string>
+    <string name="scan_qr_hint">将对方的二维码放入取景框</string>
+
+    <!-- Settings -->
+    <string name="settings_title">设置</string>
+    <string name="settings_appearance">外观</string>
+    <string name="settings_dynamic_color">Material You 动态配色</string>
+    <string name="settings_dynamic_color_hint_s">跟随系统壁纸取色；关闭后使用品牌绿主题（#0F9D47）</string>
+    <string name="settings_dynamic_color_hint_legacy">需要 Android 12+；当前将使用品牌绿主题</string>
+    <string name="settings_relay">中继服务器</string>
+    <string name="settings_server_label">服务器 (https://你的域名)</string>
+    <string name="settings_server_placeholder">https://relay.example.com</string>
+    <string name="settings_server_ok">连接正常</string>
+    <string name="settings_tls_pinned">已记录 TLS 证书指纹（防劫持）</string>
+    <string name="settings_test_connection">保存并测试连接</string>
+    <string name="settings_testing">测试中…</string>
+    <string name="settings_privacy">隐私</string>
+    <string name="settings_allow_screenshots">允许截图与录屏</string>
+    <string name="settings_allow_screenshots_hint">关闭后，聊天界面将阻止系统截图与屏幕录制</string>
+    <string name="notification_channel_desc">收到新聊天消息时提醒</string>
+    <string name="notification_generic_title">ZeroRelay</string>
+    <string name="notification_generic_body">您有新消息</string>
+    <string name="settings_security_backup">安全与备份</string>
+    <string name="settings_ratchet_backup">棘轮状态备份 / 恢复</string>
+
+    <!-- TLS dialog -->
+    <string name="tls_pin_changed_title">服务器证书已变更</string>
+    <string name="tls_pin_changed_body">检测到新的 TLS 证书指纹。仅在确认服务器已正当轮换证书后信任。\n\n%1$s</string>
+    <string name="action_trust_pin">信任并保存</string>
+
+    <!-- Ratchet backup -->
+    <string name="ratchet_backup_title">棘轮状态备份</string>
+    <string name="ratchet_backup_body">用于换机恢复私聊链状态。建议导出到加密文件保存，勿通过聊天应用转发。</string>
+    <string name="ratchet_passphrase_label">备份口令</string>
+    <string name="ratchet_export_clipboard">备用：导出到剪贴板</string>
+    <string name="ratchet_import_clipboard">备用：从剪贴板导入</string>
+    <string name="ratchet_export_file">导出到文件</string>
+    <string name="ratchet_import_file">从文件导入</string>
+
+    <!-- Chat top bar -->
+    <string name="chat_menu_copy_fingerprint">复制安全码</string>
+    <string name="chat_menu_copy_server">复制服务器地址</string>
+    <string name="chat_menu_leave">退出聊天</string>
+    <string name="chat_connection_connected">已连接 · 端到端加密</string>
+    <string name="chat_connection_connecting">连接中…</string>
+    <string name="chat_connection_disconnected">已断开</string>
+    <string name="chat_connection_error">连接错误</string>
+    <string name="chat_leave_dialog_title">退出聊天</string>
+    <string name="chat_leave_dialog_body">确定返回主页？重新进入可继续收发加密消息。</string>
+    <string name="chat_group_meta">群聊 · %1$d 人</string>
+    <string name="snackbar_copied_group_id">已复制群 ID</string>
+    <string name="snackbar_copied_fingerprint">已复制安全码</string>
+    <string name="chat_unverified_block_title">未验证联系人 — 已禁止发送</string>
+    <string name="chat_unverified_block_body">请当面核对安全码（顶部菜单可复制）：\n%1$s</string>
+    <string name="home_label_unverified_short">未验证</string>
+    <string name="home_create_group_warning">警告：已勾选 %1$d 位未验证联系人，建议先单聊核对安全码后再建群。</string>
+    <string name="home_group_member_count">%1$d 人</string>
+    <string name="error_identity_not_ready">身份未就绪</string>
+    <string name="action_leave">退出</string>
+    <string name="chat_empty_title">暂无消息</string>
+    <string name="chat_empty_subtitle">发送第一条消息，开始端到端加密对话</string>
+    <string name="chat_verify_banner">对方尚未验证。请核对安全码后再发送敏感内容。</string>
+    <string name="chat_verify_mark_safe">已核对，标记为安全并允许发送</string>
+    <string name="chat_input_placeholder">发消息</string>
+
+    <!-- Snackbars / copies -->
+    <string name="snackbar_copied_server">已复制服务器地址</string>
+    <string name="snackbar_contact_verified">已标记为已验证</string>
+    <string name="snackbar_tls_trusted">已信任新证书指纹</string>
+    <string name="snackbar_ratchet_exported">棘轮备份已保存</string>
+    <string name="snackbar_ratchet_clipboard">棘轮备份已复制到剪贴板</string>
+    <string name="snackbar_ratchet_restored">棘轮状态已恢复</string>
+    <string name="snackbar_group_key_rotated">已轮换群密钥，请重新分享邀请二维码</string>
+    <string name="snackbar_connection_pinned">连接正常，已记录证书指纹（防劫持）</string>
+    <string name="snackbar_connection_ok">连接正常</string>
+
+    <!-- Errors (ViewModel) -->
+    <string name="error_server_required">请填写服务器地址</string>
+    <string name="error_tls_changed">服务器证书已变更，请确认是否信任新证书</string>
+    <string name="error_server_unreachable">无法连接服务器：%1$s</string>
+    <string name="error_unknown">未知错误</string>
+    <string name="error_create_group">创建群聊失败</string>
+    <string name="error_join_group">加入群聊失败</string>
+    <string name="error_parse_invite">无法识别联系人或群聊邀请</string>
+    <string name="error_scan_unrecognized">无法识别群聊或联系人邀请</string>
+    <string name="error_add_failed">添加失败</string>
+    <string name="error_ratchet_passphrase">备份口令至少 8 位</string>
+    <string name="error_ratchet_write">无法写入备份文件</string>
+    <string name="error_ratchet_read">无法读取备份文件</string>
+    <string name="error_ratchet_clipboard_empty">剪贴板无备份内容</string>
+    <string name="error_ratchet_restore">恢复失败：%1$s</string>
+    <string name="error_rotate_key">轮换失败</string>
+    <string name="error_group_expired">群密钥/邀请已过期，请轮换密钥并分享新二维码</string>
+    <string name="error_not_ready">应用尚未就绪，请稍后再试</string>
+    <string name="error_chat_connect">无法连接，请检查服务器地址</string>
+    <string name="chat_snackbar_verify_before_send">请先与对方核对安全码并标记为已验证，再发送消息</string>
+    <string name="chat_snackbar_send_failed">消息发送失败</string>
+    <string name="chat_snackbar_peer_verified">已标记为已验证联系人</string>
+
+    <!-- Adaptive (tablet / foldable) -->
+    <string name="adaptive_select_chat">选择联系人或群聊开始对话</string>
+
+    <!-- Chat relay (ChatRepository) -->
+    <string name="error_relay_connect_failed">连接失败：%1$s</string>
+    <string name="error_relay_send_failed_detail">发送失败 (%1$d)：%2$s</string>
+    <string name="error_relay_send_failed_http">发送失败：HTTP %1$d</string>
+    <string name="error_relay_send_message">发送消息错误：%1$s</string>
+    <string name="error_relay_poll_failed_detail">拉取消息失败 (%1$d)：%2$s</string>
+    <string name="error_relay_poll_failed_http">拉取消息失败：HTTP %1$d</string>
+    <string name="error_relay_poll_error">拉取消息错误：%1$s</string>
+    <string name="error_relay_ws_error">WebSocket 错误：%1$s</string>
+    <string name="error_relay_ws_auth_failed">WebSocket 鉴权失败：%1$s</string>
+    <string name="error_release_tls_pin_required">Release 版本须先在设置中测试连接并信任 TLS 证书指纹</string>
+    <string name="error_relay_history_truncated">已加载最近 %1$d 条消息（房间内共 %2$d 条）</string>
+    <string name="error_relay_signature_rejected">已丢弃未通过签名校验的消息</string>
+    <string name="error_relay_decrypt_failed">无法解密对方消息（棘轮状态可能不同步，可尝试重新进入聊天）</string>
+    <string name="error_relay_legacy_decrypt">部分消息使用旧版兼容解密（%1$s 后不再支持）</string>
+</resources>

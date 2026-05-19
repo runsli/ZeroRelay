@@ -1,0 +1,6 @@
+# Copy to local.properties (gitignored) and adjust paths.
+
+sdk.dir=/Users/YOUR_USER/Library/Android/sdk
+
+# Point Gradle at JDK 26 (optional; otherwise use JAVA_HOME)
+# org.gradle.java.home=/Library/Java/JavaVirtualMachines/jdk-26.jdk/Contents/Home

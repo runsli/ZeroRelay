@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Local maintainer release: build a signed Release APK for tag vX.Y.Z.
+# Usage: scripts/android-release-build.sh v1.0.1
+# Optional override: scripts/android-release-build.sh v1.0.1 10042
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+TAG="${1:?usage: $0 v1.0.1 [versionCode]}"
+
+# shellcheck source=android-version-from-tag.sh
+source "$ROOT/scripts/android-version-from-tag.sh" "$TAG"
+
+if [[ -n "${2:-}" ]]; then
+  VERSION_CODE="$2"
+  export VERSION_CODE
+fi
+
+props="$ROOT/android/keystore.properties"
+if [[ ! -f "$props" ]]; then
+  echo "warning: $props not found — assembleRelease will fall back to debug signing" >&2
+  echo "         copy android/keystore.properties.example and add your .jks first" >&2
+fi
+
+export VERSION_NAME VERSION_CODE
+echo "Building versionName=$VERSION_NAME versionCode=$VERSION_CODE"
+
+cd "$ROOT/android"
+./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+tag_file="${TAG#refs/tags/}"
+tag_file="${tag_file#v}"
+out_name="zerorelay-v${tag_file}.apk"
+out_path="$ROOT/$out_name"
+
+cp "app/build/outputs/apk/release/app-release.apk" "$out_path"
+
+echo ""
+echo "Release APK: $out_path"
+echo "  versionName=$VERSION_NAME"
+echo "  versionCode=$VERSION_CODE"
+echo ""
+echo "Next: git tag v${tag_file} && git push origin v${tag_file}"
+echo "      upload $out_name to GitHub Releases for v${tag_file}"

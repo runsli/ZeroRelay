@@ -1,0 +1,24 @@
+name = "zero-relay-server"
+main = "src/server.ts"
+compatibility_date = "2025-04-08"
+
+[assets]
+directory = "./public"
+not_found_handling = "single-page-application"
+
+[vars]
+ENVIRONMENT = "production"
+MESSAGE_TTL_SEC = "7200"
+MAX_MESSAGES_PER_ROOM = "100"
+RELAY_LOG = "0"
+ENABLE_LEGACY_HTTP = "0"
+
+# 与仓库内 wrangler.toml 一致；本地 CLI 部署时需填写真实 id：
+# npx wrangler kv namespace create MESSAGE_KV
+[[kv_namespaces]]
+binding = "MESSAGE_KV"
+id = "YOUR_KV_NAMESPACE_ID"
+
+[dev]
+port = 8787
+local_protocol = "http"

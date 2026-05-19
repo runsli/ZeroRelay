@@ -1,0 +1,38 @@
+{
+  "name": "zero-relay",
+  "private": true,
+  "description": "ZeroRelay CLI dependencies",
+  "bin": {
+    "zerorelay": "./cli.js",
+    "zr": "./cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "setup:cli": "bash scripts/cli-setup.sh",
+    "dev:web": "npm --prefix web run dev",
+    "build:web": "npm --prefix web run build",
+    "cli": "node cli.js",
+    "test:interop": "node scripts/interop-test.js",
+    "audit": "npm audit --audit-level=high",
+    "audit:all": "bash scripts/security-audit.sh",
+    "build:cli": "pkg cli.js --targets node20-macos-arm64,node20-linux-x64,node20-win-x64 --output dist/zerorelay --config package.json"
+  },
+  "pkg": {
+    "assets": [
+      "cli-*.js",
+      "scripts/**/*"
+    ],
+    "outputPath": "dist"
+  },
+  "dependencies": {
+    "@noble/curves": "^1.9.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.20.1"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  }
+}

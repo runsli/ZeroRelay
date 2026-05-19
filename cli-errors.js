@@ -1,0 +1,32 @@
+/**
+ * CLI 用户可见错误/提示文案（与 Android res/values/strings.xml 对齐）
+ */
+module.exports = {
+  SERVER_REQUIRED: '请填写服务器地址',
+  TLS_CHANGED: '服务器证书已变更，请确认是否信任新证书',
+  SERVER_UNREACHABLE: (detail) => `无法连接服务器：${detail}`,
+  UNKNOWN: '未知错误',
+  CREATE_GROUP_FAILED: '创建群聊失败',
+  JOIN_GROUP_FAILED: '加入群聊失败',
+  PARSE_INVITE_FAILED: '无法识别联系人或群聊邀请',
+  SCAN_UNRECOGNIZED: '无法识别群聊或联系人邀请',
+  ADD_FAILED: '添加失败',
+  RATCHET_PASSPHRASE: '备份口令至少 8 位',
+  RATCHET_WRITE_FAILED: '无法写入备份文件',
+  RATCHET_READ_FAILED: '无法读取备份文件',
+  RATCHET_CLIPBOARD_EMPTY: '剪贴板无备份内容',
+  RATCHET_RESTORE_FAILED: (detail) => `恢复失败：${detail}`,
+  ROTATE_KEY_FAILED: '轮换失败',
+  GROUP_EXPIRED: '群密钥/邀请已过期，请轮换密钥并分享新二维码',
+  GROUP_INVITE_EXPIRED: '群邀请已过期，请向群主索取新二维码',
+  NOT_READY: '应用尚未就绪，请稍后再试',
+  CHAT_CONNECT_FAILED: '无法连接，请检查服务器地址',
+  VERIFY_BEFORE_SEND: '请先与对方核对安全码并标记为已验证，再发送消息',
+  SEND_FAILED: '消息发送失败',
+  CONTACT_VERIFIED: '已标记为已验证联系人',
+  MESSAGE_TOO_LONG: '消息过长',
+  GROUP_NAME_REQUIRED: '群名称不能为空',
+  CONTACT_NOT_FOUND: '未找到联系人',
+  GROUP_NOT_FOUND: '未找到群聊',
+  GROUP_NOT_EXISTS: '群聊不存在',
+};
