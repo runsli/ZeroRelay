@@ -12,5 +12,6 @@
 | F-Droid | [F-DROID.md](F-DROID.md) | [F-DROID.zh-CN.md](F-DROID.zh-CN.md) |
 | Web 客户端 | [web/README.md](../web/README.md) | [web/README.zh-CN.md](../web/README.zh-CN.md) |
 | 服务端 / Deploy 按钮 | [server/README.md](../server/README.md) | [server/README.zh-CN.md](../server/README.zh-CN.md) |
+| README 截图说明 | [screenshots/README.md](screenshots/README.md) | [screenshots/README.zh-CN.md](screenshots/README.zh-CN.md) |
 
 上表每一行均有**中英两个版本**。打开任一文件，文首语言切换可跳转到另一语言。

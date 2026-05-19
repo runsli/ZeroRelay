@@ -14,6 +14,16 @@
 | **CLI** | Node.js 终端 |
 | **中继** | 本地 Node · 生产环境 Cloudflare Workers |
 
+## 界面截图
+
+> 将图片放入 [`docs/screenshots/`](docs/screenshots/README.zh-CN.md)，提交后下方会自动显示。
+
+| Android | Web 网页 | CLI |
+|---------|----------|-----|
+| ![Android 聊天](docs/screenshots/android-chat.png) | ![网页端](docs/screenshots/web-home.png) | ![命令行](docs/screenshots/cli-menu.png) |
+
+*可选：* [首页](docs/screenshots/android-home.png) · [设置](docs/screenshots/android-settings.png) · [网页聊天](docs/screenshots/web-chat.png)
+
 ---
 
 ## 快速上手（约 5 分钟）

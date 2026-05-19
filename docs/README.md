@@ -12,5 +12,6 @@
 | F-Droid | [F-DROID.md](F-DROID.md) | [F-DROID.zh-CN.md](F-DROID.zh-CN.md) |
 | Web client | [web/README.md](../web/README.md) | [web/README.zh-CN.md](../web/README.zh-CN.md) |
 | Server / Deploy button | [server/README.md](../server/README.md) | [server/README.zh-CN.md](../server/README.zh-CN.md) |
+| README screenshots | [screenshots/README.md](screenshots/README.md) | [screenshots/README.zh-CN.md](screenshots/README.zh-CN.md) |
 
 Every doc listed above is available in **both** English and 简体中文. Open either file; the language switcher at the top links to the translation.

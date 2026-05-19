@@ -14,6 +14,16 @@
 | **CLI** | Node.js terminal |
 | **Relay** | Node.js locally · Cloudflare Workers in production |
 
+## Screenshots
+
+> Add images under [`docs/screenshots/`](docs/screenshots/README.md) — README links below light up once files exist.
+
+| Android | Web | CLI |
+|---------|-----|-----|
+| ![Android chat](docs/screenshots/android-chat.png) | ![Web UI](docs/screenshots/web-home.png) | ![CLI](docs/screenshots/cli-menu.png) |
+
+*Optional:* [android-home](docs/screenshots/android-home.png) · [android-settings](docs/screenshots/android-settings.png) · [web-chat](docs/screenshots/web-chat.png)
+
 ---
 
 ## Quick start (about 5 minutes)
