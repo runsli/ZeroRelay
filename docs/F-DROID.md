@@ -1,5 +1,7 @@
 # F-Droid packaging notes
 
+**Languages:** English | [简体中文](F-DROID.zh-CN.md)
+
 ## Dependency policy
 
 - QR scanning uses **ZXing** + **CameraX** only (`QrCodeAnalyzer.kt`). **No Google ML Kit.**
@@ -41,8 +43,8 @@ Submit to [fdroiddata](https://gitlab.com/fdroid/fdroiddata) (adjust `repo` URL)
 Categories:
   - Internet
 License: MIT
-SourceCode: https://github.com/YOUR_USER/YOUR_REPO
-IssueTracker: https://github.com/YOUR_USER/YOUR_REPO/issues
+SourceCode: https://github.com/runsli/ZeroRelay
+IssueTracker: https://github.com/runsli/ZeroRelay/issues
 
 Summary:
   E2EE chat client for your own relay

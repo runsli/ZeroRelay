@@ -1,5 +1,7 @@
 # ZeroRelay server (Worker + relay API + web UI)
 
+**Languages:** English | [简体中文](README.zh-CN.md)
+
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
 
 ## One-click deploy (recommended)

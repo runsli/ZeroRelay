@@ -1,11 +1,10 @@
-# Compile-check Release APK on CI (debug signing). Official installs use the
-# maintainer-built APK uploaded manually to GitHub Releases — see README.
+# Compile-check Release APK on CI (debug signing only).
+# Official signed APKs: push tag v* → android-github-release.yml → GitHub Releases.
 name: Android build (CI)
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 concurrency:

@@ -1,0 +1,114 @@
+# Official Release APK: push tag v* → signed build → GitHub Release asset.
+# Configure Actions secrets first — see docs/GITHUB_RELEASES.md
+name: Android GitHub Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-github-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify no signing keys in repository
+        run: bash scripts/verify-no-signing-in-repo.sh
+
+      - name: Require signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=()
+          [[ -z "$ANDROID_KEYSTORE_BASE64" ]] && missing+=(ANDROID_KEYSTORE_BASE64)
+          [[ -z "$ANDROID_KEYSTORE_PASSWORD" ]] && missing+=(ANDROID_KEYSTORE_PASSWORD)
+          [[ -z "$ANDROID_KEY_ALIAS" ]] && missing+=(ANDROID_KEY_ALIAS)
+          [[ -z "$ANDROID_KEY_PASSWORD" ]] && missing+=(ANDROID_KEY_PASSWORD)
+          if ((${#missing[@]})); then
+            echo "::error::Missing GitHub Actions secrets: ${missing[*]}"
+            echo "See docs/GITHUB_RELEASES.md"
+            exit 1
+          fi
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/libs.versions.toml
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x android/gradlew
+
+      - name: Write local.properties
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+
+      - name: Decode release keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/zerorelay-release.jks
+          chmod 600 android/zerorelay-release.jks
+
+      - name: Resolve version from tag
+        run: |
+          # shellcheck disable=SC1091
+          source scripts/android-version-from-tag.sh "${GITHUB_REF_NAME}"
+          echo "VERSION_NAME=${VERSION_NAME}" >> "${GITHUB_ENV}"
+          echo "VERSION_CODE=${VERSION_CODE}" >> "${GITHUB_ENV}"
+          echo "APK_NAME=zerorelay-v${VERSION_NAME}.apk" >> "${GITHUB_ENV}"
+          echo "Resolved versionName=${VERSION_NAME} versionCode=${VERSION_CODE}"
+
+      - name: Verify version.properties matches tag
+        run: |
+          # shellcheck disable=SC1091
+          source scripts/android-version-from-tag.sh "${GITHUB_REF_NAME}"
+          props_version="$(grep -E '^versionName=' android/version.properties | cut -d= -f2)"
+          props_code="$(grep -E '^versionCode=' android/version.properties | cut -d= -f2)"
+          if [[ "$props_version" != "$VERSION_NAME" || "$props_code" != "$VERSION_CODE" ]]; then
+            echo "::error::android/version.properties ($props_version / $props_code) does not match tag ${GITHUB_REF_NAME} ($VERSION_NAME / $VERSION_CODE)"
+            echo "Run: scripts/android-version-from-tag.sh ${GITHUB_REF_NAME} --write && commit before tagging"
+            exit 1
+          fi
+
+      - name: Build signed release APK
+        working-directory: android
+        env:
+          VERSION_NAME: ${{ env.VERSION_NAME }}
+          VERSION_CODE: ${{ env.VERSION_CODE }}
+          ANDROID_KEYSTORE_FILE: zerorelay-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Package APK
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "${APK_NAME}"
+          ls -lh "${APK_NAME}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: ${{ env.APK_NAME }}
+          fail_on_unmatched_files: true

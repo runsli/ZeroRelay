@@ -1,6 +1,6 @@
 # 安全说明
 
-**文档语言：** [English](SECURITY.md) | 简体中文
+**语言：** [English](SECURITY.md) | 简体中文
 
 ## 威胁模型（简要）
 

@@ -1,5 +1,7 @@
 # ZeroRelay Web
 
+**Languages:** English | [简体中文](README.zh-CN.md)
+
 Browser client (MVP) aligned with [docs/PROTOCOL.md](../docs/PROTOCOL.md) — same tunnel `POST /t`, WebSocket auth, v2 ratchet, and contact QR payloads as the CLI and Android app.
 
 ## Requirements

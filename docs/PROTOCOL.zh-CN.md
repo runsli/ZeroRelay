@@ -1,6 +1,6 @@
 # ZeroRelay 协议对齐清单
 
-**文档语言：** [English](PROTOCOL.md) | 简体中文
+**语言：** [English](PROTOCOL.md) | 简体中文
 
 CLI（Node）、Android（Kotlin）与 Server（TypeScript）须保持下列常量与行为一致。修改任一端时请同步更新本文档与 `scripts/interop-test.js`。
 
