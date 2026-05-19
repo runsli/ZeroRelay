@@ -411,15 +411,16 @@ export ZERO_RELAY_PASSPHRASE='你的口令'
 
 CI 运行 `scripts/verify-no-signing-in-repo.sh`，防止误提交签名材料。
 
-#### 版本号（由 tag 驱动）
+#### 版本号（可复现 / 由 tag 驱动）
 
-`versionName` / `versionCode` 在 **编译时** 写入 APK（不是 GitHub Releases 自动改的）。优先级：
+固定在 **`android/version.properties`**（需提交进 Git）。发版前执行：
 
-1. 环境变量 `VERSION_NAME` / `VERSION_CODE`（或 Gradle `-PversionName` / `-PversionCode`）
-2. 当前 `HEAD` 上的精确 git tag（`v1.0.1` → 名称 `1.0.1`，`versionCode` = `10001`，规则：`主*10000+次*100+修订`）
-3. 默认 `1.0.0` / `10000`
+```bash
+scripts/android-version-from-tag.sh v1.0.1 --write
+git add android/version.properties && git commit -m "chore(android): bump version to 1.0.1"
+```
 
-CI 在推送 `v*` 标签时使用同一套解析（`scripts/android-version-from-tag.sh`）。
+Gradle 读取顺序：`version.properties` → `-P` / 环境变量 → `HEAD` 上精确 tag → 默认 `1.0.0` / `10000`。F-Droid 说明见 [docs/F-DROID.md](docs/F-DROID.md)。
 
 #### 维护者：一键本地发版
 

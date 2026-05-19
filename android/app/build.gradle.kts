@@ -13,6 +13,13 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+val versionPropertiesFile = rootProject.file("version.properties")
+val versionProperties = Properties().apply {
+    if (versionPropertiesFile.exists()) {
+        load(FileInputStream(versionPropertiesFile))
+    }
+}
+
 fun releaseSigningProp(propertyKey: String, envKey: String): String? =
     keystoreProperties.getProperty(propertyKey)?.takeIf { it.isNotBlank() }
         ?: System.getenv(envKey)?.takeIf { it.isNotBlank() }
@@ -134,7 +141,6 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
-    implementation(libs.mlkit.barcode)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

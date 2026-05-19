@@ -34,8 +34,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.zerorelay.R
 import app.zerorelay.ui.components.ZeroRelayAppBar
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
+import app.zerorelay.ui.util.QrCodeAnalyzer
 import java.util.concurrent.Executors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -93,39 +92,18 @@ fun ScanQrScreen(
                                 val preview = Preview.Builder().build().also {
                                     it.surfaceProvider = previewView.surfaceProvider
                                 }
-                                val scanner = BarcodeScanning.getClient()
                                 val executor = Executors.newSingleThreadExecutor()
-                                val analysis = ImageAnalysis.Builder()
-                                    .setTargetResolution(Size(1280, 720))
-                                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                    .build()
-                                analysis.setAnalyzer(executor) { imageProxy ->
-                                    if (handled) {
-                                        imageProxy.close()
-                                        return@setAnalyzer
+                                val analysis =
+                                    ImageAnalysis.Builder()
+                                        .setTargetResolution(Size(1280, 720))
+                                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                        .build()
+                                analysis.setAnalyzer(executor, QrCodeAnalyzer { raw ->
+                                    if (!handled && raw.isNotBlank()) {
+                                        handled = true
+                                        onScanned(raw)
                                     }
-                                    val mediaImage = imageProxy.image
-                                    if (mediaImage != null) {
-                                        val image = InputImage.fromMediaImage(
-                                            mediaImage,
-                                            imageProxy.imageInfo.rotationDegrees,
-                                        )
-                                        scanner.process(image)
-                                            .addOnSuccessListener { barcodes ->
-                                                val raw = barcodes
-                                                    .mapNotNull { it.rawValue?.trim() }
-                                                    .filter { it.isNotEmpty() }
-                                                    .maxByOrNull { it.length }
-                                                if (!raw.isNullOrBlank() && !handled) {
-                                                    handled = true
-                                                    onScanned(raw)
-                                                }
-                                            }
-                                            .addOnCompleteListener { imageProxy.close() }
-                                    } else {
-                                        imageProxy.close()
-                                    }
-                                }
+                                })
                                 cameraProvider.unbindAll()
                                 cameraProvider.bindToLifecycle(
                                     lifecycleOwner,

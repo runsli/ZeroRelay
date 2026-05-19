@@ -355,15 +355,16 @@ Release keystores and passwords stay **on the builder’s machine only** — the
 
 `scripts/verify-no-signing-in-repo.sh` runs in CI to block accidental commits of signing material.
 
-#### Version numbers (tag-driven)
+#### Version numbers (reproducible / tag-driven)
 
-`versionName` / `versionCode` are set at **build time** (not by GitHub Releases alone). Priority:
+Pinned in **`android/version.properties`** (committed). Bump before release:
 
-1. Environment `VERSION_NAME` / `VERSION_CODE` (or Gradle `-PversionName` / `-PversionCode`)
-2. Exact git tag on `HEAD` (`v1.0.1` → name `1.0.1`, code `10001` via `major*10000 + minor*100 + patch`)
-3. Default `1.0.0` / `10000`
+```bash
+scripts/android-version-from-tag.sh v1.0.1 --write
+git add android/version.properties && git commit -m "chore(android): bump version to 1.0.1"
+```
 
-Tag pushes on CI use the same resolver as local builds (`scripts/android-version-from-tag.sh`).
+Gradle resolution order: `version.properties` → `-P` / env → exact git tag on `HEAD` → default `1.0.0` / `10000`. F-Droid notes: [docs/F-DROID.md](docs/F-DROID.md).
 
 #### Maintainer: one-command release build
 

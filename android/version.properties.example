@@ -1,0 +1,4 @@
+# Copy to version.properties when releasing, or run:
+#   scripts/android-version-from-tag.sh v1.0.1
+versionName=1.0.0
+versionCode=10000
