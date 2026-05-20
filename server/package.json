@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@noble/curves": "^1.9.1",
-    "hono": "^4.12.19",
+    "hono": "^4.12.21",
     "ws": "^8.20.1"
   },
   "devDependencies": {
