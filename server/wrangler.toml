@@ -6,11 +6,6 @@ name = "zero-relay-server"
 main = "src/server.ts"
 compatibility_date = "2025-04-08"
 
-# Web UI (Vite build → public/). Same deploy as relay — open the Worker URL in a browser.
-[assets]
-directory = "./public"
-not_found_handling = "single-page-application"
-
 [vars]
 ENVIRONMENT = "production"
 MESSAGE_TTL_SEC = "7200"

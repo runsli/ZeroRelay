@@ -11,11 +11,9 @@ Add PNG or WebP files here (recommended width **1080px** or less; keep each file
 | `android-home.png` | Home screen (contact list / navigation) |
 | `android-chat.png` | Open chat with a few messages |
 | `android-settings.png` | Settings with relay URL (blur secrets if any) |
-| `web-home.png` | Web UI home / identity + QR |
-| `web-chat.png` | Web 1:1 chat |
 | `cli-menu.png` | CLI main menu or `zerorelay help` in terminal |
 
-Minimum for README: **one image per client** (`android-chat.png`, `web-home.png`, `cli-menu.png`).
+Minimum for README: **one image per client** (`android-chat.png`, `cli-menu.png`).
 
 ## Tips
 
@@ -30,6 +28,5 @@ After adding files, they appear automatically in the root [README.md](../../READ
 
 | File | Source |
 |------|--------|
-| `web-home.png` | Real capture of local `npm run dev` (Web UI) |
 | `cli-menu.png` | Rendered from live `node cli.js help` output |
 | `android-chat.png` | Placeholder product-style mock — replace with `adb exec-out screencap -p` when a device is connected |

@@ -10,7 +10,6 @@
 | 协议 | [PROTOCOL.md](PROTOCOL.md) | [PROTOCOL.zh-CN.md](PROTOCOL.zh-CN.md) |
 | 安全 | [SECURITY.md](SECURITY.md) | [SECURITY.zh-CN.md](SECURITY.zh-CN.md) |
 | F-Droid | [F-DROID.md](F-DROID.md) | [F-DROID.zh-CN.md](F-DROID.zh-CN.md) |
-| Web 客户端 | [web/README.md](../web/README.md) | [web/README.zh-CN.md](../web/README.zh-CN.md) |
 | 服务端 / Deploy 按钮 | [server/README.md](../server/README.md) | [server/README.zh-CN.md](../server/README.zh-CN.md) |
 | README 截图说明 | [screenshots/README.md](screenshots/README.md) | [screenshots/README.zh-CN.md](screenshots/README.zh-CN.md) |
 

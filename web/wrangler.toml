@@ -1,5 +1,0 @@
-# Cloudflare Pages — static web client (build output: dist/)
-# Deploy: cd web && npm run build && npx wrangler pages deploy dist
-name = "zerorelay-web"
-compatibility_date = "2024-09-09"
-pages_build_output_dir = "dist"

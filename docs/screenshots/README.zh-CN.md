@@ -11,11 +11,9 @@
 | `android-home.png` | 首页（联系人 / 导航） |
 | `android-chat.png` | 聊天界面（几条示例消息） |
 | `android-settings.png` | 设置页（中继地址可打码） |
-| `web-home.png` | 网页首页 / 身份与二维码 |
-| `web-chat.png` | 网页单聊 |
 | `cli-menu.png` | CLI 主菜单或 `zerorelay help` |
 
-README 最少需要：**每个客户端各一张**（`android-chat.png`、`web-home.png`、`cli-menu.png`）。
+README 最少需要：**每个客户端各一张**（`android-chat.png`、`cli-menu.png`）。
 
 ## 注意
 
@@ -29,6 +27,5 @@ README 最少需要：**每个客户端各一张**（`android-chat.png`、`web-h
 
 | 文件 | 来源 |
 |------|------|
-| `web-home.png` | 本地 `npm run dev` 真实截图 |
 | `cli-menu.png` | 根据 `node cli.js help` 输出绘制 |
 | `android-chat.png` | 占位示意图 — 连接真机后可用 `adb exec-out screencap -p` 替换 |

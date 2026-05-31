@@ -12,10 +12,10 @@ if [ -z "$URL" ] || [[ "$URL" != https://github.com/* ]]; then
 fi
 BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo main)"
 DEPLOY_URL="https://deploy.workers.cloudflare.com/?url=${URL}/tree/${BRANCH}/server"
-echo "Deploy URL (relay + web UI on one Worker):"
+echo "Deploy URL (relay Worker):"
 echo "$DEPLOY_URL"
 echo ""
-echo "After deploy: open https://<worker>.workers.dev in a browser."
+echo "After deploy: use https://<worker>.workers.dev as the relay URL."
 echo "Health: curl https://<worker>.workers.dev/health"
 echo ""
 echo "Markdown:"

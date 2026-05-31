@@ -7,7 +7,7 @@
 ```
 ┌─────────────┐     HTTPS POST /t      ┌──────────────────────────┐
 │ Android /   │ ──────────────────────►│ Cloudflare Workers       │
-│ Web / CLI   │     WSS /ws            │ + KV（密文缓存）          │
+│ CLI         │     WSS /ws            │ + KV（密文缓存）          │
 └─────────────┘                        └──────────────────────────┘
        │                                         │
        └─ 明文仅留在设备端 ───────────────────────┘ 中继：routeHash + 密文
@@ -21,15 +21,12 @@
 
 ---
 
-## 一键部署（中继 + 网页）
+## 一键部署
 
 使用 [README.zh-CN.md](../README.zh-CN.md) 中的 Deploy 按钮（指向 `server/`）。部署后：
 
-- 浏览器：`https://<worker>.workers.dev`
 - 健康检查：`curl https://<worker>.workers.dev/health`
-- Android / CLI：在设置中填写同一 HTTPS 地址
-
-**不要**对 `web/` 使用仅 Pages 的一键部署 — 网页已打包进 Worker（`server/public`）。
+- Android / CLI：在设置中填写 `https://<worker>.workers.dev`
 
 Fork 了仓库？运行 `./scripts/deploy-button-url.sh` 生成你的按钮链接。
 

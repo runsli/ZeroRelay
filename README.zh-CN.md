@@ -4,13 +4,12 @@
 
 **文档：** [English](README.md) · 简体中文 · [全部文档](docs/README.zh-CN.md) · [English index](docs/README.md)
 
-[![Deploy 中继 + 网页到 Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
+[![Deploy 中继到 Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
 [![GitHub Releases](https://img.shields.io/github/v/release/runsli/ZeroRelay?label=Android%20APK)](https://github.com/runsli/ZeroRelay/releases)
 
 | 客户端 | 平台 |
 |--------|------|
 | **Android** | Jetpack Compose · Material 3 |
-| **Web** | 浏览器 |
 | **CLI** | Node.js 终端 |
 | **中继** | 本地 Node · 生产环境 Cloudflare Workers |
 
@@ -18,11 +17,11 @@
 
 > 将图片放入 [`docs/screenshots/`](docs/screenshots/README.zh-CN.md)，提交后下方会自动显示。
 
-| Android | Web 网页 | CLI |
-|---------|----------|-----|
-| ![Android 聊天](docs/screenshots/android-chat.png) | ![网页端](docs/screenshots/web-home.png) | ![命令行](docs/screenshots/cli-menu.png) |
+| Android | CLI |
+|---------|-----|
+| ![Android 聊天](docs/screenshots/android-chat.png) | ![命令行](docs/screenshots/cli-menu.png) |
 
-*可选：* [首页](docs/screenshots/android-home.png) · [设置](docs/screenshots/android-settings.png) · [网页聊天](docs/screenshots/web-chat.png)
+*可选：* [首页](docs/screenshots/android-home.png) · [设置](docs/screenshots/android-settings.png)
 
 ---
 
@@ -32,7 +31,7 @@
 
 ### 1. 部署中继（或使用他人提供的地址）
 
-**最简单：** 点击上方 **Deploy to Cloudflare** → 登录部署。你会得到一个地址，例如 `https://zero-relay-server.<你>.workers.dev`，**同时**提供 API 和网页聊天界面。
+**最简单：** 点击上方 **Deploy to Cloudflare** → 登录部署。你会得到一个中继地址，例如 `https://zero-relay-server.<你>.workers.dev`。
 
 检查：`curl https://<你的-worker>.workers.dev/health`
 
@@ -49,8 +48,6 @@
 1. 打开 App → **设置** → 填写 **中继 HTTPS 地址** → **测试连接**（首次可能需信任证书 pin）。
 2. 把你的联系人二维码 / 链接发给对方（对方须使用**同一中继地址**）。
 3. 互相添加、核对**安全码**、标记已验证后发消息。
-
-**网页端：** Cloudflare 部署完成后，用浏览器打开 Worker 地址即可（无需单独建 Pages）。
 
 **CLI：** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay config set server https://你的中继地址`
 
@@ -73,7 +70,7 @@
 - **端到端加密：** X25519、HKDF、棘轮 v2（AES-256-GCM）；群聊使用共享密钥
 - **中继加固：** HMAC 房间令牌、Ed25519 签名、速率限制
 - **Android：** WebSocket + HTTP 回退、可选 Material You 动态色、自适应布局
-- **互通：** Android、Web、CLI 使用同一套协议
+- **互通：** Android、CLI 使用同一套协议
 
 ---
 
@@ -82,7 +79,6 @@
 | 目标 | 说明 |
 |------|------|
 | 本地中继 | `cd server && npm install && npm start` |
-| Web 开发 | `cd web && npm install && npm run dev` → [web/README.zh-CN.md](web/README.zh-CN.md) · [English](web/README.md) |
 | Android Debug | JDK 17+（推荐 26）、SDK 37 → `cd android && ./gradlew assembleDebug` |
 | Android Release | [docs/GITHUB_RELEASES.zh-CN.md](docs/GITHUB_RELEASES.zh-CN.md) · [English](docs/GITHUB_RELEASES.md) |
 | CLI | `./scripts/cli-setup.sh` · `zerorelay help` |
@@ -95,7 +91,6 @@
 ZeroRelay/
 ├── android/     # Android 客户端
 ├── server/      # 中继（Worker + 本地 Node）
-├── web/         # 浏览器客户端
 └── cli.js       # 命令行入口
 ```
 

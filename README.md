@@ -4,13 +4,12 @@
 
 **Languages:** English · [简体中文](README.zh-CN.md) · [Docs](docs/README.md) · [文档](docs/README.zh-CN.md)
 
-[![Deploy relay + web UI to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
+[![Deploy relay to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/runsli/ZeroRelay/tree/main/server)
 [![GitHub Releases](https://img.shields.io/github/v/release/runsli/ZeroRelay?label=Android%20APK)](https://github.com/runsli/ZeroRelay/releases)
 
 | Client | Platform |
 |--------|----------|
 | **Android** | Jetpack Compose · Material 3 |
-| **Web** | Browser (Vite + TypeScript) |
 | **CLI** | Node.js terminal |
 | **Relay** | Node.js locally · Cloudflare Workers in production |
 
@@ -18,11 +17,11 @@
 
 > Add images under [`docs/screenshots/`](docs/screenshots/README.md) — README links below light up once files exist.
 
-| Android | Web | CLI |
-|---------|-----|-----|
-| ![Android chat](docs/screenshots/android-chat.png) | ![Web UI](docs/screenshots/web-home.png) | ![CLI](docs/screenshots/cli-menu.png) |
+| Android | CLI |
+|---------|-----|
+| ![Android chat](docs/screenshots/android-chat.png) | ![CLI](docs/screenshots/cli-menu.png) |
 
-*Optional:* [android-home](docs/screenshots/android-home.png) · [android-settings](docs/screenshots/android-settings.png) · [web-chat](docs/screenshots/web-chat.png)
+*Optional:* [android-home](docs/screenshots/android-home.png) · [android-settings](docs/screenshots/android-settings.png)
 
 ---
 
@@ -32,7 +31,7 @@ You need **a relay URL** (HTTPS) and **a client**. Everyone using the same relay
 
 ### 1. Run a relay (or use someone else’s)
 
-**Easiest:** click **Deploy to Cloudflare** above → sign in → deploy. You get one URL, e.g. `https://zero-relay-server.<you>.workers.dev`, that serves **both** the API and the web chat UI.
+**Easiest:** click **Deploy to Cloudflare** above → sign in → deploy. You get a relay URL, e.g. `https://zero-relay-server.<you>.workers.dev`.
 
 Check: `curl https://<your-worker>.workers.dev/health`
 
@@ -49,8 +48,6 @@ Or build Debug yourself: `cd android && ./gradlew assembleDebug` (see [Build fro
 1. Open the app → **Settings** → set **relay URL** to your `https://…` address → **Test connection** (trust the certificate pin on first connect if prompted).
 2. Share your contact QR / link with a friend (they need the **same relay URL**).
 3. Add each other, compare the **safety number**, mark verified, then send messages.
-
-**Web:** open your Worker URL in a browser (after Cloudflare deploy) — no separate Pages setup required.
 
 **CLI:** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay config set server https://your-relay.example.com`
 
@@ -73,7 +70,7 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) · [docs/PROTOCOL.md](docs/PROTOCO
 - **E2EE:** X25519, HKDF, ratchet v2 (AES-256-GCM); group chats with shared keys
 - **Relay hardening:** HMAC room tokens, Ed25519 signatures, rate limits
 - **Android:** WebSocket + HTTP fallback, optional Material You colors, adaptive layout
-- **Interop:** Android, Web, and CLI on the same protocol
+- **Interop:** Android and CLI on the same protocol
 
 ---
 
@@ -82,7 +79,6 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) · [docs/PROTOCOL.md](docs/PROTOCO
 | Goal | Where to look |
 |------|----------------|
 | Relay (local) | `cd server && npm install && npm start` → [server/README.md](server/README.md) · [中文](server/README.zh-CN.md) |
-| Web UI (dev) | `cd web && npm install && npm run dev` → [web/README.md](web/README.md) · [中文](web/README.zh-CN.md) |
 | Android (Debug) | JDK 17+ (26 recommended), SDK 37 → `cd android && ./gradlew assembleDebug` |
 | Android (Release APK) | [docs/GITHUB_RELEASES.md](docs/GITHUB_RELEASES.md) · [中文](docs/GITHUB_RELEASES.zh-CN.md) |
 | CLI | `./scripts/cli-setup.sh` · `zerorelay help` |
@@ -95,7 +91,6 @@ Repository layout:
 ZeroRelay/
 ├── android/     # Android app
 ├── server/      # Relay (Worker + local Node)
-├── web/         # Browser client
 └── cli.js       # CLI entry
 ```
 

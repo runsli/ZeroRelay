@@ -11,8 +11,6 @@
   },
   "scripts": {
     "setup:cli": "bash scripts/cli-setup.sh",
-    "dev:web": "npm --prefix web run dev",
-    "build:web": "npm --prefix web run build",
     "cli": "node cli.js",
     "test:interop": "node scripts/interop-test.js",
     "audit": "npm audit --audit-level=high",

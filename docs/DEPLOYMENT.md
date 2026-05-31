@@ -7,7 +7,7 @@ Production relay: **Cloudflare Workers + KV**. Clients use **HTTPS** and **WSS**
 ```
 ┌─────────────┐     HTTPS POST /t      ┌──────────────────────────┐
 │ Android /   │ ──────────────────────►│ Cloudflare Workers       │
-│ Web / CLI   │     WSS /ws            │ + KV (ciphertext cache) │
+│ CLI         │     WSS /ws            │ + KV (ciphertext cache) │
 └─────────────┘                        └──────────────────────────┘
        │                                         │
        └─ plaintext stays on devices ────────────┘ relay: routeHash + ciphertext only
@@ -21,15 +21,12 @@ Production relay: **Cloudflare Workers + KV**. Clients use **HTTPS** and **WSS**
 
 ---
 
-## One-click Deploy (relay + web UI)
+## One-click Deploy
 
 Use the Deploy button in [README.md](../README.md) (points at `server/`). After deploy:
 
-- Browser: `https://<worker>.workers.dev`
 - Health: `curl https://<worker>.workers.dev/health`
-- Android / CLI: same HTTPS URL in settings
-
-Do **not** use a Pages-only one-click deploy for `web/` — the UI is bundled into the Worker (`server/public`).
+- Android / CLI: use `https://<worker>.workers.dev` in settings
 
 Fork? Run `./scripts/deploy-button-url.sh` for your repo URL.
 

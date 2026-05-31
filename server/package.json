@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "cloudflare": {
-    "label": "ZeroRelay (relay + web UI)",
+    "label": "ZeroRelay relay",
     "bindings": {
       "MESSAGE_KV": {
         "description": "Stores **ciphertext only** for relay delivery. Created automatically when using Deploy to Cloudflare."
@@ -14,10 +14,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build:web": "npm --prefix ../web ci && npm --prefix ../web run build",
-    "build": "npm run build:web && npm run check",
+    "build": "npm run check",
     "dev": "wrangler dev",
-    "deploy": "npm run build:web && wrangler deploy",
+    "deploy": "npm run build && wrangler deploy",
     "start": "node server-local.js",
     "start:log": "TRANSPORT_LOG=1 node server-local.js",
     "start:quiet": "TRANSPORT_LOG=0 node server-local.js",
