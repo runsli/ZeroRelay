@@ -27,6 +27,13 @@ class UserPreferences(context: Context) {
         prefs.edit { putBoolean(KEY_ALLOW_SCREENSHOTS, allow) }
     }
 
+    /** 返回首页后是否启动 Foreground Service 维持 relay 连接。 */
+    fun getKeepAliveInBackground(): Boolean = prefs.getBoolean(KEY_KEEP_ALIVE, true)
+
+    fun setKeepAliveInBackground(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_KEEP_ALIVE, enabled) }
+    }
+
     fun getRecentRooms(): List<String> {
         val json = prefs.getString(KEY_RECENT_ROOMS, null) ?: return emptyList()
         return try {
@@ -69,6 +76,7 @@ class UserPreferences(context: Context) {
         private const val KEY_SERVER_URL = "server_url"
         private const val KEY_USE_DYNAMIC_COLOR = "use_dynamic_color"
         private const val KEY_ALLOW_SCREENSHOTS = "allow_screenshots"
+        private const val KEY_KEEP_ALIVE = "keep_alive_in_background"
         private const val KEY_RECENT_ROOMS = "recent_rooms"
         private const val KEY_RECENT_CONTACTS = "recent_contacts"
     }

@@ -5,6 +5,7 @@ import app.zerorelay.data.local.UserPreferences
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
+import app.zerorelay.service.RelayForegroundService
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -16,7 +17,9 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /** 应用级单例：维持当前房间连接，供聊天 UI 与本地通知共用。 */
 class RelayMessagingHub private constructor(context: Context) {
-    val repository: ChatRepository = ChatRepository(context, UserPreferences(context))
+    private val appContext = context.applicationContext
+    private val preferences = UserPreferences(appContext)
+    val repository: ChatRepository = ChatRepository(appContext, preferences)
 
     /** 用户正在查看的聊天（前台 UI 绑定）。 */
     var activeSession: ChatSession? = null
@@ -48,6 +51,7 @@ class RelayMessagingHub private constructor(context: Context) {
             detachedSession = null
         }
         activeSession = session
+        RelayForegroundService.stop(appContext)
     }
 
     /** 返回首页：保持 transport，会话转入 detached。 */
@@ -55,12 +59,24 @@ class RelayMessagingHub private constructor(context: Context) {
         val session = activeSession ?: return
         detachedSession = session
         activeSession = null
+        syncForegroundService()
     }
 
     /** 用户明确离开：清除前台与 detached 会话引用（不断开 transport，由 leaveRoom 负责）。 */
     fun clearSession() {
         activeSession = null
         detachedSession = null
+        RelayForegroundService.stop(appContext)
+    }
+
+    /** 设置页切换后台保活开关时同步 Foreground Service。 */
+    fun syncForegroundService() {
+        val session = detachedSession
+        if (session != null && preferences.getKeepAliveInBackground()) {
+            RelayForegroundService.start(appContext, session)
+        } else {
+            RelayForegroundService.stop(appContext)
+        }
     }
 
     fun recordMessage(msg: ChatMessage) {

@@ -221,6 +221,20 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
+            Text(stringResource(R.string.settings_connections), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            SettingsSwitchRow(
+                title = stringResource(R.string.settings_keep_alive_title),
+                subtitle = stringResource(R.string.settings_keep_alive_summary),
+                checked = state.keepAliveInBackground,
+                enabled = true,
+                onCheckedChange = viewModel::setKeepAliveInBackground,
+            )
+
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
             Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             SettingsSwitchRow(

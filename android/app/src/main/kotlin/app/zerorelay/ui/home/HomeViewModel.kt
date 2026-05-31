@@ -79,6 +79,8 @@ data class HomeUiState(
     val useDynamicColor: Boolean = true,
     /** 为 true 时允许系统截图/录屏聊天界面。 */
     val allowScreenshots: Boolean = true,
+    /** 返回首页后通过 Foreground Service 维持 relay 连接。 */
+    val keepAliveInBackground: Boolean = true,
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -106,6 +108,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     myQrPayload = qr,
                     useDynamicColor = prefs.getUseDynamicColor(),
                     allowScreenshots = prefs.getAllowScreenshots(),
+                    keepAliveInBackground = prefs.getKeepAliveInBackground(),
                     tlsPinned = RelayHttpClient.hasPin(getApplication(), server),
                 )
             }
@@ -551,5 +554,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun setAllowScreenshots(allow: Boolean) {
         prefs.setAllowScreenshots(allow)
         _uiState.update { it.copy(allowScreenshots = allow) }
+    }
+
+    fun setKeepAliveInBackground(enabled: Boolean) {
+        prefs.setKeepAliveInBackground(enabled)
+        _uiState.update { it.copy(keepAliveInBackground = enabled) }
+        val hub = RelayMessagingHub.get(getApplication())
+        if (!enabled) {
+            hub.syncForegroundService()
+            if (hub.detachedSession != null) {
+                AppSnackbarBus.show(appStr(R.string.settings_keep_alive_disabled_hint))
+            }
+        } else {
+            hub.syncForegroundService()
+        }
     }
 }
