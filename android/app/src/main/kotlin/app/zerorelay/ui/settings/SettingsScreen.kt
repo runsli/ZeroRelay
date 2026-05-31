@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +38,7 @@ import app.zerorelay.data.crypto.RatchetBackupFiles
 import app.zerorelay.ui.components.ZeroRelayAppBar
 import app.zerorelay.ui.home.HomeViewModel
 import app.zerorelay.ui.theme.InputFieldShape
+import app.zerorelay.ui.util.BatteryOptimizationHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +47,14 @@ fun SettingsScreen(
     viewModel: HomeViewModel = viewModel(),
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     var pendingExportPassphrase by remember { mutableStateOf<String?>(null) }
+
+    val batteryOptLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) {
+        viewModel.refreshBatteryOptimizationStatus()
+    }
 
     val exportBackupLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(RatchetBackupFiles.MIME_TYPE),
@@ -230,6 +239,32 @@ fun SettingsScreen(
                 enabled = true,
                 onCheckedChange = viewModel::setKeepAliveInBackground,
             )
+            Spacer(Modifier.height(12.dp))
+            if (state.batteryOptimizationIgnored) {
+                Text(
+                    stringResource(R.string.settings_battery_optimization_done),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            } else {
+                Column {
+                    Text(
+                        stringResource(R.string.settings_battery_optimization_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    TextButton(
+                        onClick = {
+                            val intent = BatteryOptimizationHelper.createRequestIntent(context)
+                                ?: BatteryOptimizationHelper.createSettingsIntent()
+                            batteryOptLauncher.launch(intent)
+                        },
+                    ) {
+                        Text(stringResource(R.string.settings_battery_optimization_action))
+                    }
+                }
+            }
 
             Spacer(Modifier.height(24.dp))
             HorizontalDivider()

@@ -51,6 +51,7 @@ import app.zerorelay.R
 import app.zerorelay.ui.components.ZeroRelayAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -71,12 +72,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.model.ChatSession
+import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.data.model.Contact
 import app.zerorelay.ui.theme.CardShape
+import app.zerorelay.ui.util.BatteryOptimizationHelper
 import app.zerorelay.ui.theme.InputFieldShape
 import app.zerorelay.ui.util.generateQrBitmap
 import app.zerorelay.ui.util.rememberAppWidthClass
@@ -105,6 +111,16 @@ fun HomeScreen(
         ) {
             notifyPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshBatteryOptimizationStatus()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     var showAddSheet by remember { mutableStateOf(false) }
     val addSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -510,6 +526,7 @@ private fun HomeMainList(
     showTabs: Boolean = false,
     onSelectTab: ((HomeTab) -> Unit)? = null,
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         if (showTitle) {
             Text(
@@ -524,6 +541,22 @@ private fun HomeMainList(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+        val detachedName = state.detachedChatName
+        if (!detachedName.isNullOrBlank()) {
+            DetachedConnectionBanner(
+                chatName = detachedName,
+                connection = state.detachedConnection,
+                showBatteryHint = !state.batteryOptimizationIgnored,
+                onOpenChat = {
+                    viewModel.detachedSessionForChat()?.let(onOpenChat)
+                },
+                onBatterySettings = {
+                    BatteryOptimizationHelper.createRequestIntent(context)?.let { context.startActivity(it) }
+                        ?: context.startActivity(BatteryOptimizationHelper.createSettingsIntent())
+                },
+                modifier = Modifier.padding(bottom = 12.dp),
             )
         }
         if (showTabs && onSelectTab != null) {
@@ -804,5 +837,52 @@ private fun GroupRow(
             },
             colors = ListItemDefaults.colors(containerColor = cs.surfaceContainerLow),
         )
+    }
+}
+
+@Composable
+private fun DetachedConnectionBanner(
+    chatName: String,
+    connection: ConnectionState,
+    showBatteryHint: Boolean,
+    onOpenChat: () -> Unit,
+    onBatterySettings: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val statusText = when (connection) {
+        ConnectionState.Connected -> stringResource(R.string.chat_connection_connected)
+        ConnectionState.Connecting -> stringResource(R.string.chat_connection_connecting)
+        ConnectionState.Error -> stringResource(R.string.chat_connection_error)
+        ConnectionState.Disconnected -> stringResource(R.string.chat_connection_disconnected)
+    }
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = cs.secondaryContainer,
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onOpenChat),
+            ) {
+                Text(
+                    text = stringResource(R.string.home_detached_listening, chatName),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = cs.onSecondaryContainer,
+                )
+                Text(
+                    text = statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSecondaryContainer,
+                )
+            }
+            if (showBatteryHint) {
+                TextButton(onClick = onBatterySettings) {
+                    Text(stringResource(R.string.home_detached_battery_hint))
+                }
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ package app.zerorelay.data.chat
 
 import android.content.Context
 import app.zerorelay.data.local.UserPreferences
+import app.zerorelay.data.local.DetachedSessionStore
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
@@ -29,6 +30,14 @@ class RelayMessagingHub private constructor(context: Context) {
     var detachedSession: ChatSession? = null
         private set
 
+    private val _detachedSession = MutableStateFlow<ChatSession?>(null)
+    val detachedSessionFlow: StateFlow<ChatSession?> = _detachedSession.asStateFlow()
+
+    private fun setDetachedSession(session: ChatSession?) {
+        detachedSession = session
+        _detachedSession.value = session
+    }
+
     private val messagesByRoom = ConcurrentHashMap<String, CopyOnWriteArrayList<ChatMessage>>()
 
     private val _roomMessageEvents = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 64)
@@ -46,26 +55,37 @@ class RelayMessagingHub private constructor(context: Context) {
     /** 进入聊天页：前台绑定会话。切换至不同 room 时由 [ChatRepository.joinRoom] 断开旧 transport（单房间模型，多房间见 #13）。 */
     fun attachSession(session: ChatSession) {
         if (detachedSession?.roomId == session.roomId) {
-            detachedSession = null
+            setDetachedSession(null)
         } else if (detachedSession != null) {
-            detachedSession = null
+            setDetachedSession(null)
         }
         activeSession = session
+        DetachedSessionStore(appContext).clear()
         RelayForegroundService.stop(appContext)
     }
 
     /** 返回首页：保持 transport，会话转入 detached。 */
     fun detachSession() {
         val session = activeSession ?: return
-        detachedSession = session
+        setDetachedSession(session)
         activeSession = null
+        DetachedSessionStore(appContext).save(session)
+        syncForegroundService()
+    }
+
+    /** 冷启动或恢复：重建 detached 会话引用（transport 需由调用方 joinRoom）。 */
+    fun restoreDetachedSession(session: ChatSession) {
+        setDetachedSession(session)
+        activeSession = null
+        DetachedSessionStore(appContext).save(session)
         syncForegroundService()
     }
 
     /** 用户明确离开：清除前台与 detached 会话引用（不断开 transport，由 leaveRoom 负责）。 */
     fun clearSession() {
         activeSession = null
-        detachedSession = null
+        setDetachedSession(null)
+        DetachedSessionStore(appContext).clear()
         RelayForegroundService.stop(appContext)
     }
 

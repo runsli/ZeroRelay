@@ -2,8 +2,10 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="zero_relay_prefs.xml" />
+        <exclude domain="sharedpref" path="zero_relay_detached.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="zero_relay_prefs.xml" />
+        <exclude domain="sharedpref" path="zero_relay_detached.xml" />
     </device-transfer>
 </data-extraction-rules>

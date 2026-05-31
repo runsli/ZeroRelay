@@ -17,17 +17,22 @@ import app.zerorelay.data.crypto.MessageCipher
 import app.zerorelay.data.crypto.RatchetBackup
 import app.zerorelay.data.crypto.RatchetBackupFiles
 import app.zerorelay.data.identity.IdentityStore
+import app.zerorelay.data.local.DetachedSessionStore
 import app.zerorelay.data.local.UserPreferences
 import app.zerorelay.data.model.ChatGroup
+import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatSession
+import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.data.model.Contact
 import app.zerorelay.data.model.Identity
+import app.zerorelay.data.crypto.IdentityCrypto
 import app.zerorelay.data.network.RelayHttpClient
 import app.zerorelay.data.network.RelaySecurityPolicy
 import app.zerorelay.data.network.ServerHealth
 import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.session.SessionFactory
 import app.zerorelay.ui.snackbar.AppSnackbarBus
+import app.zerorelay.ui.util.BatteryOptimizationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,11 +86,16 @@ data class HomeUiState(
     val allowScreenshots: Boolean = true,
     /** 返回首页后通过 Foreground Service 维持 relay 连接。 */
     val keepAliveInBackground: Boolean = true,
+    /** 后台 detached 会话名称；非 null 时在首页显示监听状态。 */
+    val detachedChatName: String? = null,
+    val detachedConnection: ConnectionState = ConnectionState.Disconnected,
+    val batteryOptimizationIgnored: Boolean = true,
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val identityStore = IdentityStore(application)
     private val prefs = UserPreferences(application)
+    private val hub = RelayMessagingHub.get(application)
 
     private fun appStr(@StringRes resId: Int, vararg args: Any): String =
         getApplication<Application>().getString(resId, *args)
@@ -110,7 +120,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     allowScreenshots = prefs.getAllowScreenshots(),
                     keepAliveInBackground = prefs.getKeepAliveInBackground(),
                     tlsPinned = RelayHttpClient.hasPin(getApplication(), server),
+                    batteryOptimizationIgnored = BatteryOptimizationHelper.isIgnoringOptimizations(application),
                 )
+            }
+            restoreDetachedSessionIfNeeded(identity)
+            refreshDetachedListeningStatus()
+        }
+        viewModelScope.launch {
+            hub.detachedSessionFlow.collect {
+                refreshDetachedListeningStatus()
+            }
+        }
+        viewModelScope.launch {
+            hub.connection.collect { conn ->
+                refreshDetachedListeningStatus(conn)
             }
         }
     }
@@ -568,5 +591,83 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             hub.syncForegroundService()
         }
+    }
+
+    fun refreshBatteryOptimizationStatus() {
+        _uiState.update {
+            it.copy(
+                batteryOptimizationIgnored = BatteryOptimizationHelper.isIgnoringOptimizations(getApplication()),
+            )
+        }
+    }
+
+    fun detachedSessionForChat(): ChatSession? = hub.detachedSession
+
+    private fun refreshDetachedListeningStatus(connection: ConnectionState = hub.connection.value) {
+        val detached = hub.detachedSession
+        _uiState.update {
+            it.copy(
+                detachedChatName = detached?.peerDisplayName,
+                detachedConnection = if (detached != null) connection else ConnectionState.Disconnected,
+            )
+        }
+    }
+
+    private suspend fun restoreDetachedSessionIfNeeded(identity: Identity) {
+        if (hub.listeningSession() != null) return
+        val record = DetachedSessionStore(getApplication()).load() ?: return
+        val session = sessionFromRecord(record, identity) ?: run {
+            DetachedSessionStore(getApplication()).clear()
+            AppSnackbarBus.show(appStr(R.string.error_restore_detached_session))
+            return
+        }
+        if (hub.repository.isInRoom(session.roomId)) {
+            hub.restoreDetachedSession(session)
+            refreshDetachedListeningStatus()
+            return
+        }
+        val ok = joinChatSession(session, identity)
+        if (!ok) {
+            DetachedSessionStore(getApplication()).clear()
+            AppSnackbarBus.show(appStr(R.string.error_restore_detached_session_failed))
+            return
+        }
+        hub.restoreDetachedSession(session)
+        refreshDetachedListeningStatus()
+    }
+
+    private fun sessionFromRecord(
+        record: DetachedSessionStore.DetachedSessionRecord,
+        identity: Identity,
+    ): ChatSession? {
+        val session = when (record.kind) {
+            ChatKind.Direct -> {
+                val contact = identityStore.findContact(record.peerContactId) ?: return null
+                SessionFactory.create(record.serverUrl, identity, contact)
+            }
+            ChatKind.Group -> {
+                val group = identityStore.findGroup(record.peerContactId) ?: return null
+                SessionFactory.createForGroup(record.serverUrl, identity, group)
+            }
+        }
+        return session.takeIf { it.roomId == record.roomId }
+    }
+
+    private suspend fun joinChatSession(session: ChatSession, identity: Identity): Boolean {
+        val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
+        return hub.repository.joinRoom(
+            serverUrl = session.serverUrl,
+            room = session.roomId,
+            sessionKey = session.sessionKey,
+            sender = senderId,
+            contactId = session.peerContactId,
+            kind = session.kind,
+            groupKeys = session.groupKeysByVersion,
+            groupKeyVer = session.groupKeyVersion,
+            localPublicKey = if (session.kind == ChatKind.Direct) identity.publicKey else null,
+            peerPublicKey = session.peerPublicKeyBase64?.let(IdentityCrypto::decodePublicKey),
+            identityPrivateKey = identity.privateKey,
+            identityPublicKey = identity.publicKey,
+        )
     }
 }

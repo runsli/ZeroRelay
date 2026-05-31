@@ -2,4 +2,5 @@
 <full-backup-content>
     <!-- 不备份 SharedPreferences 中的服务器与房间记录（含敏感上下文） -->
     <exclude domain="sharedpref" path="zero_relay_prefs.xml" />
+    <exclude domain="sharedpref" path="zero_relay_detached.xml" />
 </full-backup-content>
