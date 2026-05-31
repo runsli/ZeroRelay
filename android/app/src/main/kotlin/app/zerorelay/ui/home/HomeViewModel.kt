@@ -10,6 +10,7 @@ import androidx.lifecycle.AndroidViewModel
 import app.zerorelay.R
 import androidx.lifecycle.viewModelScope
 import app.zerorelay.data.chat.RelayMessagingHub
+import app.zerorelay.data.chat.RelaySessionCoordinator
 import app.zerorelay.data.crypto.ContactExchange
 import app.zerorelay.data.crypto.GroupExchange
 import app.zerorelay.data.crypto.MessageCipher
@@ -26,7 +27,6 @@ import app.zerorelay.data.network.RelaySecurityPolicy
 import app.zerorelay.data.network.ServerHealth
 import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.session.SessionFactory
-import app.zerorelay.ui.notification.MessageNotificationController
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -92,7 +92,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        MessageNotificationController.start(application)
+        RelaySessionCoordinator.start(application)
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
@@ -489,7 +489,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun findChatSessionForRoom(roomId: String): ChatSession? {
-        RelayMessagingHub.get(getApplication()).activeSession
+        val hub = RelayMessagingHub.get(getApplication())
+        hub.listeningSession()
             ?.takeIf { it.roomId == roomId }
             ?.let { return it }
         val identity = _uiState.value.identity ?: return null

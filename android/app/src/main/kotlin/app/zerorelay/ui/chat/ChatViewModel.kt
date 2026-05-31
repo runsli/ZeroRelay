@@ -7,7 +7,6 @@ import app.zerorelay.R
 import androidx.lifecycle.viewModelScope
 import app.zerorelay.data.chat.RelayMessagingHub
 import app.zerorelay.data.identity.IdentityStore
-import app.zerorelay.data.local.UserPreferences
 import app.zerorelay.data.crypto.IdentityCrypto
 import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatMessage
@@ -42,22 +41,40 @@ class ChatViewModel(
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var boundSession: ChatSession? = null
-    private var collectorsStarted = false
 
     private fun appStr(@StringRes resId: Int, vararg args: Any): String =
         getApplication<Application>().getString(resId, *args)
 
+    init {
+        viewModelScope.launch {
+            hub.roomMessageEvents.collect { msg ->
+                val room = boundSession?.roomId ?: return@collect
+                if (msg.roomId != room) return@collect
+                _uiState.update { state ->
+                    if (state.messages.any { it.id == msg.id }) state
+                    else state.copy(messages = state.messages + msg)
+                }
+            }
+        }
+        viewModelScope.launch {
+            hub.connection.collect { conn ->
+                if (boundSession != null) {
+                    _uiState.update { it.copy(connection = conn) }
+                }
+            }
+        }
+    }
+
     fun bindSession(session: ChatSession) {
         boundSession = session
-        hub.activeSession = session
-        startCollectorsIfNeeded()
+        hub.attachSession(session)
         val needsVerify = session.kind == ChatKind.Direct &&
             identityStore.findContact(session.peerContactId)?.verified != true
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
             if (repository.isInRoom(session.roomId)) {
-                val conn = repository.connection.value
+                val conn = hub.connection.value
                 if (conn == ConnectionState.Disconnected || conn == ConnectionState.Error) {
                     repository.reconnectTransport()
                 }
@@ -66,7 +83,7 @@ class ChatViewModel(
                         roomId = session.roomId,
                         senderId = senderId,
                         messages = hub.messagesFor(session.roomId),
-                        connection = repository.connection.value,
+                        connection = hub.connection.value,
                         initError = null,
                         peerNeedsVerification = needsVerify,
                         peerFingerprint = session.peerFingerprint,
@@ -106,9 +123,9 @@ class ChatViewModel(
 
     /** 用户明确退出聊天：断开中继并停止后台拉取。 */
     fun leaveChat() {
-        val room = boundSession?.roomId
+        val room = boundSession?.roomId ?: hub.listeningSession()?.roomId
         boundSession = null
-        hub.activeSession = null
+        hub.clearSession()
         if (room != null) hub.clearMessages(room)
         repository.leaveRoom()
         _uiState.update {
@@ -119,39 +136,15 @@ class ChatViewModel(
         }
     }
 
-    /** 仅清空当前 ViewModel 展示（返回首页时仍保持房间连接以便通知）。 */
+    /** 返回首页：保持 relay 连接，会话转入 detached。 */
     fun detachUi() {
+        hub.detachSession()
         boundSession = null
         _uiState.update {
             it.copy(
                 messages = emptyList(),
                 connection = ConnectionState.Disconnected,
             )
-        }
-    }
-
-    private fun startCollectorsIfNeeded() {
-        if (collectorsStarted) return
-        collectorsStarted = true
-        viewModelScope.launch {
-            repository.messages.collect { msg ->
-                val activeRoom = boundSession?.roomId ?: hub.activeSession?.roomId ?: return@collect
-                if (msg.roomId.isNotBlank() && msg.roomId != activeRoom) return@collect
-                hub.recordMessage(msg)
-                if (boundSession != null) {
-                    _uiState.update { it.copy(messages = it.messages + msg) }
-                }
-            }
-        }
-        viewModelScope.launch {
-            repository.connection.collect { conn ->
-                _uiState.update { it.copy(connection = conn) }
-            }
-        }
-        viewModelScope.launch {
-            repository.errors.collect { err ->
-                AppSnackbarBus.show(err)
-            }
         }
     }
 
