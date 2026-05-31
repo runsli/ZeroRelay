@@ -104,6 +104,7 @@
     <string name="settings_allow_screenshots_hint">关闭后，聊天界面将阻止系统截图与屏幕录制</string>
     <string name="notification_channel_desc">收到新聊天消息时提醒</string>
     <string name="notification_generic_title">ZeroRelay</string>
+    <string name="notification_message_title">%1$s · 新消息</string>
     <string name="notification_generic_body">您有新消息</string>
     <string name="foreground_channel_name">后台连接</string>
     <string name="foreground_channel_desc">返回首页后维持加密 relay 连接；通知不含消息内容</string>

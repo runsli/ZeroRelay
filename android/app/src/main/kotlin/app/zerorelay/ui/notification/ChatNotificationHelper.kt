@@ -39,7 +39,7 @@ object ChatNotificationHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    /** 仅通用文案，不含发送者或消息正文（降低通知栏元数据泄露） */
+    /** 不含消息正文；可展示本地联系人/群名称。 */
     fun show(context: Context, roomId: String, session: ChatSession?) {
         if (!canPost(context)) return
         ensureChannel(context)
@@ -53,9 +53,15 @@ object ChatNotificationHelper {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
+        val peerName = session?.peerDisplayName?.trim().orEmpty()
+        val title = if (peerName.isNotEmpty()) {
+            context.getString(R.string.notification_message_title, peerName)
+        } else {
+            context.getString(R.string.notification_generic_title)
+        }
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notify)
-            .setContentTitle(context.getString(R.string.notification_generic_title))
+            .setContentTitle(title)
             .setContentText(context.getString(R.string.notification_generic_body))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setAutoCancel(true)

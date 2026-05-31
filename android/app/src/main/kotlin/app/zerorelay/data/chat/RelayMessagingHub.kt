@@ -43,7 +43,7 @@ class RelayMessagingHub private constructor(context: Context) {
 
     fun listeningSession(): ChatSession? = activeSession ?: detachedSession
 
-    /** 进入聊天页：前台绑定会话。 */
+    /** 进入聊天页：前台绑定会话。切换至不同 room 时由 [ChatRepository.joinRoom] 断开旧 transport（单房间模型，多房间见 #13）。 */
     fun attachSession(session: ChatSession) {
         if (detachedSession?.roomId == session.roomId) {
             detachedSession = null

@@ -142,6 +142,7 @@ class ChatRepository(
             baseUrl == normalizedUrl &&
             encryptionKey?.contentEquals(sessionKey) == true
         if (!sameSession) {
+            // 单 ChatRepository 实例仅维持一个 room；并行监听多会话见 GitHub #13。
             leaveRoom()
         } else {
             disconnectTransport()
