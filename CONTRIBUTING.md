@@ -36,6 +36,14 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 Default server URL is `http://127.0.0.1:8787` if `ZERO_RELAY_SERVER` is unset.
 
+## CLI unit tests
+
+```bash
+npm test
+```
+
+Covers `cli-menu.js` routing and `cli-config.js` persistence (Node built-in `node:test`). Runs on every PR via **Security audit** CI.
+
 ## Server TypeScript check
 
 ```bash
@@ -70,7 +78,7 @@ If you change message formats, relay HTTP/WebSocket behavior, constants, or cryp
 | **Android PR check** | PRs that change `android/**` — string key parity, `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug` |
 | **Server PR check** | PRs that change `server/**` — `tsc` via `npm run check` |
 | **Interop test** | PRs that change `cli*.js`, `server/**`, `scripts/interop-test.js`, or `android/**/crypto/**` |
-| **Security audit** | All PRs — `npm audit` on root and `server/` |
+| **Security audit** | All PRs — `npm test` (CLI unit tests) + `npm audit` on root and `server/` |
 
 See [docs/PROTOCOL.md](docs/PROTOCOL.md) for protocol details.
 

@@ -25,6 +25,9 @@ jobs:
       - name: Install dependencies
         working-directory: ${{ matrix.dir }}
         run: npm ci
+      - name: CLI unit tests
+        if: matrix.dir == '.'
+        run: npm test
       - name: npm audit (high+)
         working-directory: ${{ matrix.dir }}
         run: npm audit --audit-level=high

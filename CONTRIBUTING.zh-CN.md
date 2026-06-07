@@ -36,6 +36,14 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 未设置 `ZERO_RELAY_SERVER` 时，默认使用 `http://127.0.0.1:8787`。
 
+## CLI 单元测试
+
+```bash
+npm test
+```
+
+覆盖 `cli-menu.js` 菜单路由与 `cli-config.js` 本地配置（Node 内置 `node:test`）。每个 PR 的 **Security audit** CI 都会执行。
+
 ## Server TypeScript 检查
 
 ```bash
@@ -70,7 +78,7 @@ cd android
 | **Android PR check** | PR 改动 `android/**` — 文案 key 一致性、`compileDebugKotlin`、`testDebugUnitTest`、`lintDebug` |
 | **Server PR check** | PR 改动 `server/**` — `npm run check`（`tsc`） |
 | **Interop test** | PR 改动 `cli*.js`、`server/**`、`scripts/interop-test.js` 或 `android/**/crypto/**` |
-| **Security audit** | 所有 PR — 对根目录与 `server/` 执行 `npm audit` |
+| **Security audit** | 所有 PR — `npm test`（CLI 单元测试）+ 对根目录与 `server/` 执行 `npm audit` |
 
 协议细节见 [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md)。
 

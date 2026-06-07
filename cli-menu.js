@@ -190,4 +190,11 @@ async function runInteractiveMainMenu(ctx) {
   }
 }
 
-module.exports = { runInteractiveMainMenu };
+module.exports = {
+  runInteractiveMainMenu,
+  promptStartChat,
+  handleConfigureServer,
+  handleShowQr,
+  handleAddContact,
+  handleBackgroundWatch,
+};
