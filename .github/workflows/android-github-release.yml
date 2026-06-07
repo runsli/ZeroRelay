@@ -83,7 +83,7 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          clean="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]"'\''')"
+          clean="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | tr -d '"' | tr -d "'")"
           if [[ -z "$clean" ]]; then
             echo "::error::ANDROID_KEYSTORE_BASE64 is empty"
             exit 1

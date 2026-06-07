@@ -4,10 +4,14 @@
 #    or: scripts/verify-keystore-base64.sh path/to/base64.txt
 set -euo pipefail
 
+strip_b64() {
+  tr -d '[:space:]' | tr -d '"' | tr -d "'"
+}
+
 if [[ "${1:-}" != "" && -f "${1:-}" ]]; then
-  B64="$(tr -d '[:space:]"'\'' < "$1")"
+  B64="$(strip_b64 < "$1")"
 else
-  B64="$(tr -d '[:space:]"'\'' )"
+  B64="$(strip_b64)"
 fi
 
 if [[ -z "$B64" ]]; then
