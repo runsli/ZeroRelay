@@ -51,6 +51,8 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
+单元测试（JVM，无需设备）：`./gradlew :app:testDebugUnitTest`
+
 提 PR 前可选：`./gradlew :app:lintDebug`（与 **Android PR check** CI 相同）。
 
 ## 协议与加密变更
@@ -65,7 +67,7 @@ cd android
 
 | 检查 | 触发条件 |
 |------|----------|
-| **Android PR check** | PR 改动 `android/**` — 文案 key 一致性、`compileDebugKotlin` + `lintDebug` |
+| **Android PR check** | PR 改动 `android/**` — 文案 key 一致性、`compileDebugKotlin`、`testDebugUnitTest`、`lintDebug` |
 | **Server PR check** | PR 改动 `server/**` — `npm run check`（`tsc`） |
 | **Interop test** | PR 改动 `cli*.js`、`server/**`、`scripts/interop-test.js` 或 `android/**/crypto/**` |
 | **Security audit** | 所有 PR — 对根目录与 `server/` 执行 `npm audit` |

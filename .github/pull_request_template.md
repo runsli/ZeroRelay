@@ -33,7 +33,7 @@ These workflows run when matching paths change (see [CONTRIBUTING.md](../CONTRIB
 
 | Check | Typical trigger |
 |-------|-------------------|
-| **Android PR check** | `android/**` — string parity, `compileDebugKotlin`, `lintDebug` |
+| **Android PR check** | `android/**` — string parity, `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug` |
 | **Server PR check** | `server/**` — `npm run check` (`tsc`) |
 | **Interop test** | `cli*.js`, `server/**`, `scripts/interop-test.js`, `android/**/crypto/**` |
 | **Security audit** | All PRs — `npm audit` on root and `server/` |
@@ -44,5 +44,6 @@ These workflows run when matching paths change (see [CONTRIBUTING.md](../CONTRIB
 |------|---------|
 | Interop | `npm run test:interop` |
 | Android Debug APK | `cd android && ./gradlew :app:assembleDebug` |
+| Android unit tests | `cd android && ./gradlew :app:testDebugUnitTest` |
 | Android strings | `bash scripts/check-android-strings.sh` |
 | Server types | `cd server && npm run check` |

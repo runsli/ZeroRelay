@@ -43,6 +43,6 @@ jobs:
       - name: Write local.properties
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
 
-      - name: Compile Debug Kotlin and run lint
+      - name: Compile Debug Kotlin, unit tests, and lint
         working-directory: android
-        run: ./gradlew :app:compileDebugKotlin :app:lintDebug --no-daemon --stacktrace
+        run: ./gradlew :app:compileDebugKotlin :app:testDebugUnitTest :app:lintDebug --no-daemon --stacktrace

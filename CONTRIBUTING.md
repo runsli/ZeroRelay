@@ -51,6 +51,8 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
+Unit tests (JVM, no device): `./gradlew :app:testDebugUnitTest`
+
 Optional before opening a PR: `./gradlew :app:lintDebug` (same as **Android PR check** CI).
 
 ## Protocol and crypto changes
@@ -65,7 +67,7 @@ If you change message formats, relay HTTP/WebSocket behavior, constants, or cryp
 
 | Check | When it runs |
 |-------|----------------|
-| **Android PR check** | PRs that change `android/**` — string key parity, `compileDebugKotlin` + `lintDebug` |
+| **Android PR check** | PRs that change `android/**` — string key parity, `compileDebugKotlin`, `testDebugUnitTest`, `lintDebug` |
 | **Server PR check** | PRs that change `server/**` — `tsc` via `npm run check` |
 | **Interop test** | PRs that change `cli*.js`, `server/**`, `scripts/interop-test.js`, or `android/**/crypto/**` |
 | **Security audit** | All PRs — `npm audit` on root and `server/` |

@@ -163,4 +163,6 @@ dependencies {
     implementation(libs.androidx.compose.material.icons)
 
     debugImplementation(libs.androidx.compose.ui.tooling.preview)
+
+    testImplementation(libs.junit)
 }
