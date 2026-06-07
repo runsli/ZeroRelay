@@ -213,6 +213,9 @@ fun SettingsScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { viewModel.showMigrationGuide(true) }) {
+                    Text(stringResource(R.string.settings_migration_guide))
+                }
                 TextButton(onClick = { viewModel.showAccountBackup(true) }) {
                     Text(stringResource(R.string.settings_account_backup))
                 }

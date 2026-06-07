@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_migration_guide">Migration guide</string>
+    <string name="migration_guide_title">Device migration guide</string>
+    <string name="migration_guide_intro">Follow these steps to move your ZeroRelay account to a new phone. Account backup does not include local chat history; you will need to exchange new messages after migrating.</string>
+    <string name="migration_step_1_title">Export backup on old phone</string>
+    <string name="migration_step_1_body">In Settings, export an account backup (.zrab) with a passphrase of at least 8 characters. The file includes identity, contacts, groups, ratchet state, relay URL, and TLS pins.</string>
+    <string name="migration_step_2_title">Transfer the file securely</string>
+    <string name="migration_step_2_body">Move the .zrab file and passphrase via USB, encrypted cloud storage, or in-person AirDrop. Do not send the backup or passphrase through chat apps.</string>
+    <string name="migration_step_3_title">Import on new phone</string>
+    <string name="migration_step_3_body">After installing ZeroRelay, import the .zrab file from Settings using the same passphrase. Import replaces all local account data.</string>
+    <string name="migration_step_4_title">Test relay connection</string>
+    <string name="migration_step_4_body">In Settings, save and test the connection. If the relay TLS certificate rotated, trust the new pin when prompted before chatting.</string>
+    <string name="migration_step_5_title">Spot-check contacts and send a test message</string>
+    <string name="migration_step_5_body">Confirm contact and group counts look right, then send a test message to one contact to verify send/receive works.</string>
+    <string name="migration_step_6_title">Re-verify safety numbers if needed</string>
+    <string name="migration_step_6_body">If contacts show as unverified, compare safety numbers in person and mark them verified before sending sensitive content.</string>
+    <string name="migration_guide_export_action">Export backup</string>
+    <string name="migration_guide_import_action">Import backup</string>
+    <string name="migration_guide_security_link">Read security docs (migration)</string>
+    <string name="migration_checklist_title">Import complete</string>
+    <string name="migration_checklist_subtitle">Confirm each item below to finish your migration.</string>
+    <string name="migration_checklist_connection">Relay connection not tested yet</string>
+    <string name="migration_checklist_connection_pending">Testing connection…</string>
+    <string name="migration_checklist_connection_ok">Relay connection OK</string>
+    <string name="migration_checklist_connection_failed">Connection test failed — check URL and network</string>
+    <string name="migration_checklist_test_connection">Save and test connection</string>
+    <string name="migration_checklist_contacts">%1$d contacts restored</string>
+    <string name="migration_checklist_groups">%1$d groups restored</string>
+    <string name="migration_checklist_unverified">%1$d contacts need safety number verification</string>
+    <string name="migration_checklist_unverified_hint">After migrating, compare safety numbers in person again</string>
+    <string name="migration_checklist_test_message">Send a test message</string>
+    <string name="migration_checklist_test_message_hint">Return home, open a contact chat, and send a message to confirm delivery works.</string>
+    <string name="migration_checklist_tls_hint">The relay certificate changed — trust the new TLS pin before continuing.</string>
+    <string name="migration_checklist_done">Checks complete</string>
+    <string name="migration_checklist_later">Check later</string>
+    <string name="snackbar_account_backup_exported_secure">Backup exported — store the .zrab file and passphrase securely; do not send them via chat apps</string>
+</resources>

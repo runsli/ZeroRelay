@@ -28,6 +28,7 @@
 
 ## Android account backup (migration)
 
+- In the app: **Settings → Migration guide** walks through export, secure transfer, import, connection test, and safety-number re-check.
 - **Settings → Export / import account backup** writes `zero-relay-account-backup-v1` (passphrase-encrypted file).
 - Payload includes identity key pair, contacts, groups, ratchet state (same inner JSON as ratchet-only backup), relay server URL, and TLS SPKI pins.
 - **Migrate to a new device:** install ZeroRelay → import backup → open Settings and **test connection**; if the relay certificate rotated, confirm the new TLS pin when prompted.

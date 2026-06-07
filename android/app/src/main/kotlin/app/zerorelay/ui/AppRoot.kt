@@ -43,6 +43,8 @@ import app.zerorelay.ui.home.HomeViewModel
 import app.zerorelay.ui.home.ScanHandleResult
 import app.zerorelay.ui.home.ScanQrScreen
 import app.zerorelay.ui.insets.SyncSystemBarColors
+import app.zerorelay.ui.migration.MigrationGuideScreen
+import app.zerorelay.ui.migration.MigrationImportChecklistScreen
 import app.zerorelay.ui.onboarding.OnboardingScreen
 import app.zerorelay.ui.settings.SettingsScreen
 import app.zerorelay.ui.theme.ZeroRelayTheme
@@ -302,6 +304,42 @@ fun AppRoot(
                 } else {
                     LaunchedEffect(Unit) { dismissSafetyNumber() }
                 }
+            }
+
+            if (homeState.showMigrationGuide) {
+                BackHandler { homeViewModel.showMigrationGuide(false) }
+                MigrationGuideScreen(
+                    onBack = { homeViewModel.showMigrationGuide(false) },
+                    onExportBackup = {
+                        homeViewModel.showMigrationGuide(false)
+                        homeViewModel.showAccountBackup(true)
+                    },
+                    onImportBackup = {
+                        homeViewModel.showMigrationGuide(false)
+                        homeViewModel.showAccountBackup(true)
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            if (homeState.showMigrationImportChecklist) {
+                LaunchedEffect(Unit) {
+                    if (homeState.serverUrl.isNotBlank() && homeState.serverCheckOk != true && !homeState.serverChecking) {
+                        homeViewModel.saveServerUrl()
+                        homeViewModel.testServerConnection()
+                    }
+                }
+                BackHandler { homeViewModel.dismissMigrationImportChecklist() }
+                MigrationImportChecklistScreen(
+                    state = homeState,
+                    onDismiss = homeViewModel::dismissMigrationImportChecklist,
+                    onTestConnection = {
+                        homeViewModel.saveServerUrl()
+                        homeViewModel.testServerConnection()
+                    },
+                    onTrustTls = homeViewModel::trustPendingTlsPin,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             if (homeState.showOnboarding) {

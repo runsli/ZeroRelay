@@ -100,6 +100,8 @@ data class HomeUiState(
     val tlsPinned: Boolean = false,
     /** 证书轮换：待用户确认的新 pin */
     val pendingTlsPin: String? = null,
+    val showMigrationGuide: Boolean = false,
+    val showMigrationImportChecklist: Boolean = false,
     val showAccountBackupDialog: Boolean = false,
     val accountBackupPassphrase: String = "",
     val showAccountImportOverwriteDialog: Boolean = false,
@@ -645,6 +647,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(pendingTlsPin = null, userError = null) }
     }
 
+    fun showMigrationGuide(show: Boolean) = _uiState.update {
+        it.copy(showMigrationGuide = show, userError = if (show) null else it.userError)
+    }
+
+    fun dismissMigrationImportChecklist() = _uiState.update {
+        it.copy(showMigrationImportChecklist = false)
+    }
+
     fun showAccountBackup(show: Boolean) = _uiState.update {
         it.copy(
             showAccountBackupDialog = show,
@@ -670,7 +680,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 accountBackupPassphrase = "",
             )
         }
-        AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_exported))
+        AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_exported_secure))
         return true
     }
 
@@ -791,7 +801,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     tlsPinned = RelayHttpClient.hasPin(getApplication(), _uiState.value.serverUrl),
                 )
             }
-            AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_restored))
+            _uiState.update { it.copy(showMigrationImportChecklist = true) }
         } catch (e: Exception) {
             _uiState.update {
                 it.copy(
