@@ -43,13 +43,15 @@ Download the latest **`zerorelay-v*.apk`** from **[GitHub Releases](https://gith
 
 Or build Debug yourself: `cd android && ./gradlew assembleDebug` (see [Build from source](#build-from-source)).
 
+**UI language:** The Android app follows your **system locale** — English by default (`values/`), Simplified Chinese when the device is set to Chinese (`values-zh-rCN/`).
+
 ### 3. Start chatting
 
 1. Open the app → **Settings** → set **relay URL** to your `https://…` address → **Test connection** (trust the certificate pin on first connect if prompted).
 2. Share your contact QR / link with a friend (they need the **same relay URL**).
 3. Add each other, compare the **safety number**, mark verified, then send messages.
 
-**CLI:** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay config set server https://your-relay.example.com`
+**CLI:** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay` (numbered menu) or `zerorelay config set server https://your-relay.example.com`
 
 ---
 

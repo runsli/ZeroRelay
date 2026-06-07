@@ -43,13 +43,15 @@
 
 或自行编译 Debug：`cd android && ./gradlew assembleDebug`（见 [自行编译](#自行编译)）。
 
+**界面语言：** Android 应用跟随**系统语言** — 默认英文（`values/`），系统为中文时使用简体（`values-zh-rCN/`）。
+
 ### 3. 开始聊天
 
 1. 打开 App → **设置** → 填写 **中继 HTTPS 地址** → **测试连接**（首次可能需信任证书 pin）。
 2. 把你的联系人二维码 / 链接发给对方（对方须使用**同一中继地址**）。
 3. 互相添加、核对**安全码**、标记已验证后发消息。
 
-**CLI：** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay config set server https://你的中继地址`
+**CLI：** `git clone https://github.com/runsli/ZeroRelay.git && ./scripts/cli-setup.sh` → `zerorelay`（编号菜单）或 `zerorelay config set server https://你的中继地址`
 
 ---
 

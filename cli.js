@@ -36,6 +36,7 @@ const { validatePassphrase, requirePassphrase } = require('./cli-passphrase');
 const { terminalNotify } = require('./cli-notify');
 const watchSessionStore = require('./cli-watch-session');
 const { writeQrPng } = require('./cli-qr-export');
+const { runInteractiveMainMenu: runNumberedMenu } = require('./cli-menu');
 const DATA_DIR = path.join(os.homedir(), '.zero-relay');
 const CONTACTS_FILE = path.join(DATA_DIR, 'contacts.json');
 const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
@@ -1113,126 +1114,26 @@ async function offerEnterGroupChat(group) {
   await chatWithGroup(group);
 }
 
-function printInteractiveMenuHeader(identity, contacts, groups, cfg) {
-  console.log('\n── ZeroRelay 主菜单 ──');
-  console.log('Server:', getServerUrl());
-  console.log('我的安全码:', fingerprint(identity.publicKey));
-  if (watchSessionStore.isWatchRunning(DATA_DIR)) {
-    const pid = watchSessionStore.getWatchPid(DATA_DIR);
-    console.log(`[*] 后台监听运行中 (pid ${pid}) — watch stop 可停止`);
-  }
-  if (cfg.recentContactIds?.length) {
-    const recent = cfg.recentContactIds
-      .map((id) => contacts.find((c) => c.id === id))
-      .filter(Boolean)
-      .slice(0, 3);
-    if (recent.length) {
-      console.log('最近联系人:', recent.map((c) => c.name).join('、'));
-    }
-  }
-  console.log('\n快捷: [a]添加  [q]二维码  [c]配置  [w]后台  [h]帮助  [数字]聊天  [g数字]群  [回车]退出');
-}
-
 async function runInteractiveMainMenu(identity) {
-  while (true) {
-    const contacts = loadContacts();
-    const groups = loadGroups();
-    const cfg = cliConfig.loadConfig(DATA_DIR);
-    printInteractiveMenuHeader(identity, contacts, groups, cfg);
-
-    if (contacts.length === 0 && groups.length === 0) {
-      console.log('\n暂无联系人或群聊。输入 a 添加，q 显示二维码。');
-    } else {
-      console.log('\n── 联系人 ──');
-      if (contacts.length === 0) console.log('  （暂无）');
-      else {
-        contacts.forEach((c, i) => {
-          const flag = c.verified ? '' : ' [未验证]';
-          console.log(`  [${i + 1}] ${c.name}${flag}  id=${shortId(c.id)}`);
-        });
-      }
-      console.log('\n── 群聊 ──');
-      if (groups.length === 0) console.log('  （暂无）');
-      else {
-        groups.forEach((g, i) => {
-          printGroupSummary(g, contacts);
-          console.log(`       → g${i + 1}`);
-        });
-      }
-    }
-
-    const pick = await promptLine('\n选择: ');
-    const trimmed = pick.trim().toLowerCase();
-    if (!trimmed) {
-      console.log('再见。');
-      return;
-    }
-    if (trimmed === 'a') {
-      const raw = await promptLine('粘贴邀请内容: ');
-      if (raw.trim()) await addContact(raw);
-      continue;
-    }
-    if (trimmed === 'q') {
-      const payload = encodeContactPayload(identity.publicKey, null);
-      console.log('\n安全码:', fingerprint(identity.publicKey));
-      qrcodeTerminal.generate(payload, { small: true }, (code) => {
-        console.log(code);
-        console.log('\n', payload, '\n');
-      });
-      const pngAns = await promptLine('保存 PNG 路径（回车跳过）: ');
-      if (pngAns.trim()) {
-        try {
-          const out = await writeQrPng(payload, pngAns.trim());
-          console.log(`[+] 已保存 ${out}`);
-        } catch (e) {
-          console.log('[-]', e.message);
-        }
-      }
-      continue;
-    }
-    if (trimmed === 'c') {
-      console.log('当前:', getServerUrl());
-      const url = await promptLine('新服务器 URL（回车跳过）: ');
-      if (url.trim()) {
-        cliConfig.setServerUrl(DATA_DIR, cliConfig.normalizeServerUrl(url));
-        console.log('[+] 已保存');
-      }
-      continue;
-    }
-    if (trimmed === 'w') {
-      const sess = watchSessionStore.loadWatchSession(DATA_DIR);
-      if (!sess) {
-        console.log('[-] 无后台会话。先在聊天里 /detach，或先进入一次聊天');
-        continue;
-      }
-      if (watchSessionStore.isWatchRunning(DATA_DIR)) {
-        console.log('[*] 已在运行，日志:', watchSessionStore.watchLogPath(DATA_DIR));
-      } else {
-        const pid = watchSessionStore.startWatchDaemon(DATA_DIR);
-        console.log(`[+] 已启动后台监听 pid ${pid}`);
-      }
-      continue;
-    }
-    if (trimmed === 'h') {
-      printHelp();
-      continue;
-    }
-    if (trimmed.startsWith('g')) {
-      const idx = parseInt(trimmed.slice(1), 10) - 1;
-      if (idx < 0 || idx >= groups.length) {
-        console.log('[-] 无效群聊编号');
-        continue;
-      }
-      await chatWithGroup(groups[idx]);
-      continue;
-    }
-    const idx = parseInt(trimmed, 10) - 1;
-    if (idx < 0 || idx >= contacts.length) {
-      console.log('[-] 无效编号，输入 h 查看帮助');
-      continue;
-    }
-    await chatWithContact(contacts[idx]);
-  }
+  await runNumberedMenu({
+    identity,
+    DATA_DIR,
+    promptLine,
+    loadContacts,
+    loadGroups,
+    getServerUrl,
+    fingerprint,
+    encodeContactPayload,
+    qrcodeTerminal,
+    writeQrPng,
+    addContact,
+    chatWithContact,
+    chatWithGroup,
+    printGroupSummary,
+    printHelp,
+    cliConfig,
+    watchSessionStore,
+  });
 }
 
 async function runWatchLoop() {
@@ -1370,7 +1271,7 @@ ZeroRelay CLI
 打包:
   npm run build:cli            生成 dist/ 下单文件可执行（需 dev 依赖 pkg）
 
-无参数进入交互主菜单。服务器 URL 也可写在 config（config set server）。
+无参数进入编号交互主菜单（1 配置 / 2 二维码 / 3 添加 / 4 聊天）。服务器 URL 也可写在 config（config set server）。
 `);
 }
 

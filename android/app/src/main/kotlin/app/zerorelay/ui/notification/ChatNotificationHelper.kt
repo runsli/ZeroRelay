@@ -17,13 +17,12 @@ import app.zerorelay.data.model.ChatSession
 
 object ChatNotificationHelper {
     const val CHANNEL_ID = "zerorelay_messages"
-    private const val CHANNEL_NAME = "新消息"
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         val channel = NotificationChannel(
             CHANNEL_ID,
-            CHANNEL_NAME,
+            context.getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_DEFAULT,
         ).apply {
             description = context.getString(R.string.notification_channel_desc)
