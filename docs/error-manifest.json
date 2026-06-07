@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "description": "Maps CLI cli-errors.js keys to Android UserErrorKind and strings.xml resources.",
+  "entries": [
+    {
+      "id": "parse_invite",
+      "cli_key": "PARSE_INVITE_FAILED",
+      "android_title": "user_error_parse_invite_title",
+      "android_action": "user_error_parse_invite_action",
+      "user_error_kind": "ParseInvite"
+    },
+    {
+      "id": "scan_unrecognized",
+      "cli_key": "SCAN_UNRECOGNIZED",
+      "android_title": "user_error_scan_unrecognized_title",
+      "android_action": "user_error_scan_unrecognized_action",
+      "user_error_kind": "ScanUnrecognized"
+    },
+    {
+      "id": "tls_changed",
+      "cli_key": "TLS_CHANGED",
+      "android_title": "user_error_tls_changed_title",
+      "android_action": "user_error_tls_changed_action",
+      "user_error_kind": "TlsChanged"
+    },
+    {
+      "id": "server_unreachable",
+      "cli_key": "SERVER_UNREACHABLE",
+      "android_title": "user_error_server_unreachable_title",
+      "android_action": "user_error_server_unreachable_action",
+      "user_error_kind": "ServerUnreachable"
+    },
+    {
+      "id": "server_required",
+      "cli_key": "SERVER_REQUIRED",
+      "android_title": "user_error_server_required_title",
+      "android_action": "user_error_server_required_action",
+      "user_error_kind": "ServerRequired"
+    },
+    {
+      "id": "release_tls_required",
+      "cli_key": null,
+      "android_title": "user_error_release_tls_title",
+      "android_action": "user_error_release_tls_action",
+      "user_error_kind": "ReleaseTlsRequired"
+    },
+    {
+      "id": "decrypt_failed",
+      "cli_key": null,
+      "android_title": "user_error_decrypt_failed_title",
+      "android_action": "user_error_decrypt_failed_action",
+      "user_error_kind": "DecryptFailed"
+    },
+    {
+      "id": "join_group",
+      "cli_key": "JOIN_GROUP_FAILED",
+      "android_title": "user_error_join_group_title",
+      "android_action": "user_error_join_group_action",
+      "user_error_kind": "JoinGroup"
+    },
+    {
+      "id": "chat_connect",
+      "cli_key": "CHAT_CONNECT_FAILED",
+      "android_title": "user_error_chat_connect_title",
+      "android_action": "user_error_chat_connect_action",
+      "user_error_kind": "ChatConnect"
+    },
+    {
+      "id": "signature_rejected",
+      "cli_key": null,
+      "android_title": "user_error_signature_title",
+      "android_action": "user_error_signature_action",
+      "user_error_kind": "SignatureRejected"
+    },
+    {
+      "id": "ws_auth_failed",
+      "cli_key": null,
+      "android_title": "user_error_ws_auth_title",
+      "android_action": "user_error_ws_auth_action",
+      "user_error_kind": "WsAuthFailed"
+    },
+    {
+      "id": "add_contact_failed",
+      "cli_key": "ADD_FAILED",
+      "android_title": "user_error_add_contact_title",
+      "android_action": "user_error_add_contact_action",
+      "user_error_kind": "AddContactFailed"
+    },
+    {
+      "id": "create_group",
+      "cli_key": "CREATE_GROUP_FAILED",
+      "android_title": "user_error_create_group_title",
+      "android_action": "user_error_create_group_action",
+      "user_error_kind": "CreateGroup"
+    },
+    {
+      "id": "group_expired",
+      "cli_key": "GROUP_EXPIRED",
+      "android_title": "user_error_group_expired_title",
+      "android_action": "user_error_group_expired_action",
+      "user_error_kind": "GroupExpired"
+    },
+    {
+      "id": "backup_restore_failed",
+      "cli_key": "RATCHET_RESTORE_FAILED",
+      "android_title": "user_error_backup_restore_title",
+      "android_action": "user_error_backup_restore_action",
+      "user_error_kind": "BackupRestoreFailed"
+    },
+    {
+      "id": "not_ready",
+      "cli_key": "NOT_READY",
+      "android_title": "user_error_not_ready_title",
+      "android_action": "user_error_not_ready_action",
+      "user_error_kind": "NotReady"
+    }
+  ],
+  "cli_only": [
+    { "id": "unknown", "cli_key": "UNKNOWN" },
+    { "id": "verify_before_send", "cli_key": "VERIFY_BEFORE_SEND" },
+    { "id": "send_failed", "cli_key": "SEND_FAILED" },
+    { "id": "contact_verified", "cli_key": "CONTACT_VERIFIED" },
+    { "id": "message_too_long", "cli_key": "MESSAGE_TOO_LONG" },
+    { "id": "group_name_required", "cli_key": "GROUP_NAME_REQUIRED" },
+    { "id": "contact_not_found", "cli_key": "CONTACT_NOT_FOUND" },
+    { "id": "group_not_found", "cli_key": "GROUP_NOT_FOUND" },
+    { "id": "group_not_exists", "cli_key": "GROUP_NOT_EXISTS" },
+    { "id": "group_invite_expired", "cli_key": "GROUP_INVITE_EXPIRED" },
+    { "id": "ratchet_passphrase", "cli_key": "RATCHET_PASSPHRASE" },
+    { "id": "ratchet_write_failed", "cli_key": "RATCHET_WRITE_FAILED" },
+    { "id": "ratchet_read_failed", "cli_key": "RATCHET_READ_FAILED" },
+    { "id": "ratchet_clipboard_empty", "cli_key": "RATCHET_CLIPBOARD_EMPTY" },
+    { "id": "rotate_key_failed", "cli_key": "ROTATE_KEY_FAILED" }
+  ]
+}

@@ -44,6 +44,14 @@ npm test
 
 Covers `cli-menu.js` routing and `cli-config.js` persistence (Node built-in `node:test`). Runs on every PR via **Security audit** CI.
 
+CLI ↔ Android error key parity (manifest vs `cli-errors.js` / `UserErrorKind` / `user_error_*` strings):
+
+```bash
+npm run check:errors
+```
+
+See [docs/error-manifest.json](docs/error-manifest.json). CI workflow **Error manifest parity** runs when error-related paths change.
+
 ## Server TypeScript check
 
 ```bash
@@ -79,6 +87,7 @@ If you change message formats, relay HTTP/WebSocket behavior, constants, or cryp
 | **Server PR check** | PRs that change `server/**` — `tsc` via `npm run check` |
 | **Interop test** | PRs that change `cli*.js`, `server/**`, `scripts/interop-test.js`, or `android/**/crypto/**` |
 | **Security audit** | All PRs — `npm test` (CLI unit tests) + `npm audit` on root and `server/` |
+| **Error manifest parity** | PRs that change `cli-errors.js`, `user_error_*` strings, or [error-manifest.json](docs/error-manifest.json) |
 
 See [docs/PROTOCOL.md](docs/PROTOCOL.md) for protocol details.
 

@@ -141,7 +141,7 @@ Ratchet backup: PBKDF2-HMAC-SHA256 **120000** iterations; `data` = AES-GCM ciphe
 | Passphrase | Backup ≥8 chars (`cli-passphrase.js`) |
 | Recents | `recentContactIds` / `recentRoomIds` in `config.json` (max 10) |
 | Send validation | Unverified block, expired group, message too long (`protocol.padPlaintext`) |
-| Error strings | `cli-errors.js` ↔ `strings.xml` |
+| Error strings | `cli-errors.js` ↔ `strings.xml` — canonical map: [error-manifest.json](error-manifest.json); CI: `node scripts/check-error-parity.js` |
 | Debug logs | `CRYPTO_LOG=1` ↔ Logcat `ZeroRelay.Crypto`; `CRYPTO_LOG_PLAINTEXT=1` for plaintext preview |
 
 Example `~/.zero-relay/config.json`:

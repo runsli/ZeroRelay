@@ -141,7 +141,7 @@ npm run test:interop
 | 口令 | 备份 ≥8 位（`cli-passphrase.js`） |
 | 最近使用 | `config.json` 内 `recentContactIds` / `recentRoomIds`（最多 10） |
 | 发送校验 | 未验证不可发、群过期、消息过长（`protocol.padPlaintext`） |
-| 错误文案 | `cli-errors.js` ↔ `strings.xml` |
+| 错误文案 | `cli-errors.js` ↔ `strings.xml` — 对照表：[error-manifest.json](error-manifest.json)；CI：`node scripts/check-error-parity.js` |
 | 调试日志 | `CRYPTO_LOG=1` ↔ Logcat `ZeroRelay.Crypto`；`CRYPTO_LOG_PLAINTEXT=1` 可看明文预览 |
 
 `~/.zero-relay/config.json` 示例：

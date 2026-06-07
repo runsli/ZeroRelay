@@ -44,6 +44,14 @@ npm test
 
 覆盖 `cli-menu.js` 菜单路由与 `cli-config.js` 本地配置（Node 内置 `node:test`）。每个 PR 的 **Security audit** CI 都会执行。
 
+CLI 与 Android 错误 key 一致性（manifest ↔ `cli-errors.js` / `UserErrorKind` / `user_error_*` 文案）：
+
+```bash
+npm run check:errors
+```
+
+见 [docs/error-manifest.json](docs/error-manifest.json)。**Error manifest parity** 工作流在相关路径改动时运行。
+
 ## Server TypeScript 检查
 
 ```bash
@@ -79,6 +87,7 @@ cd android
 | **Server PR check** | PR 改动 `server/**` — `npm run check`（`tsc`） |
 | **Interop test** | PR 改动 `cli*.js`、`server/**`、`scripts/interop-test.js` 或 `android/**/crypto/**` |
 | **Security audit** | 所有 PR — `npm test`（CLI 单元测试）+ 对根目录与 `server/` 执行 `npm audit` |
+| **Error manifest parity** | PR 改动 `cli-errors.js`、`user_error_*` 文案或 [error-manifest.json](docs/error-manifest.json) |
 
 协议细节见 [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md)。
 

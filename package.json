@@ -13,6 +13,7 @@
     "setup:cli": "bash scripts/cli-setup.sh",
     "cli": "node cli.js",
     "test": "node --test test/*.test.js",
+    "check:errors": "node scripts/check-error-parity.js",
     "test:interop": "node scripts/interop-test.js",
     "audit": "npm audit --audit-level=high",
     "audit:all": "bash scripts/security-audit.sh",

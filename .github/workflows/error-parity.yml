@@ -1,0 +1,38 @@
+# CLI ↔ Android user-error manifest parity (structural keys, not copy text).
+name: Error manifest parity
+
+on:
+  pull_request:
+    paths:
+      - 'cli-errors.js'
+      - 'docs/error-manifest.json'
+      - 'scripts/check-error-parity.js'
+      - 'android/app/src/main/res/values/strings.xml'
+      - 'android/app/src/main/res/values-zh-rCN/strings.xml'
+      - 'android/app/src/main/kotlin/app/zerorelay/ui/error/UserError.kt'
+      - '.github/workflows/error-parity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cli-errors.js'
+      - 'docs/error-manifest.json'
+      - 'scripts/check-error-parity.js'
+      - 'android/app/src/main/res/values/strings.xml'
+      - 'android/app/src/main/res/values-zh-rCN/strings.xml'
+      - 'android/app/src/main/kotlin/app/zerorelay/ui/error/UserError.kt'
+      - '.github/workflows/error-parity.yml'
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Check error manifest parity
+        run: node scripts/check-error-parity.js
