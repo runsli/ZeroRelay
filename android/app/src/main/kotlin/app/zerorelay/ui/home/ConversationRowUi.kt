@@ -1,6 +1,7 @@
 package app.zerorelay.ui.home
 
 import app.zerorelay.data.local.ConversationEntity
+import app.zerorelay.data.local.chatKind
 import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.Contact

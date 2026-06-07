@@ -203,7 +203,7 @@ class RelayMessagingHub private constructor(context: Context) {
         _aggregatedDetachedConnection.asStateFlow()
 
     internal fun updateRoomConnection(roomId: String, state: ConnectionState) {
-        connectionFor(roomId).value = state
+        roomConnections.getOrPut(roomId) { MutableStateFlow(ConnectionState.Disconnected) }.value = state
         if (activeSession?.roomId == roomId) {
             _connection.value = state
         }

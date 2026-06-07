@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class],
@@ -30,7 +30,7 @@ abstract class MessageDatabase : RoomDatabase() {
 
         private fun build(context: Context): MessageDatabase {
             System.loadLibrary("sqlcipher")
-            val factory = SupportFactory(MessageDatabasePassphrase.get(context))
+            val factory = SupportOpenHelperFactory(MessageDatabasePassphrase.get(context))
             return Room.databaseBuilder(context, MessageDatabase::class.java, DB_NAME)
                 .openHelperFactory(factory)
                 .addMigrations(MESSAGE_DB_MIGRATION_1_2, MESSAGE_DB_MIGRATION_2_3)

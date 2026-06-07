@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import app.zerorelay.ui.components.UserErrorBanner
 import app.zerorelay.ui.error.UserError
 import app.zerorelay.ui.error.UserErrorBus
