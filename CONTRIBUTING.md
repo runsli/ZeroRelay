@@ -31,7 +31,7 @@ Default server URL is `http://127.0.0.1:8787` if `ZERO_RELAY_SERVER` is unset.
 
 | Check | When it runs |
 |-------|----------------|
-| **Android PR check** | PRs that change `android/**` — `compileDebugKotlin` + `lintDebug` |
+| **Android PR check** | PRs that change `android/**` — string key parity, `compileDebugKotlin` + `lintDebug` |
 | **Interop test** | PRs that change `cli*.js`, `server/**`, `scripts/interop-test.js`, or `android/**/crypto/**` |
 | **Security audit** | All PRs — `npm audit` on root and `server/` |
 
@@ -43,6 +43,8 @@ User-facing copy lives in two files — keep keys in sync:
 
 - `android/app/src/main/res/values/strings.xml` (English default)
 - `android/app/src/main/res/values-zh-rCN/strings.xml` (Simplified Chinese)
+
+Verify locally: `bash scripts/check-android-strings.sh`
 
 ## Commit messages
 

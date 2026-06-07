@@ -21,6 +21,9 @@ jobs:
       - name: Verify no signing keys in repository
         run: bash scripts/verify-no-signing-in-repo.sh
 
+      - name: Check Android strings en/zh key parity
+        run: bash scripts/check-android-strings.sh
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:

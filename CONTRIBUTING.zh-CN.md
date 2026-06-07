@@ -31,7 +31,7 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 | 检查 | 触发条件 |
 |------|----------|
-| **Android PR check** | PR 改动 `android/**` — `compileDebugKotlin` + `lintDebug` |
+| **Android PR check** | PR 改动 `android/**` — 文案 key 一致性、`compileDebugKotlin` + `lintDebug` |
 | **Interop test** | PR 改动 `cli*.js`、`server/**`、`scripts/interop-test.js` 或 `android/**/crypto/**` |
 | **Security audit** | 所有 PR — 对根目录与 `server/` 执行 `npm audit` |
 
@@ -43,6 +43,8 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 - `android/app/src/main/res/values/strings.xml`（英文默认）
 - `android/app/src/main/res/values-zh-rCN/strings.xml`（简体中文）
+
+本地检查：`bash scripts/check-android-strings.sh`
 
 ## Commit 信息
 
