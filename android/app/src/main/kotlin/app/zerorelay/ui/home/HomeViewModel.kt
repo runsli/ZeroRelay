@@ -11,11 +11,14 @@ import app.zerorelay.R
 import androidx.lifecycle.viewModelScope
 import app.zerorelay.data.chat.RelayMessagingHub
 import app.zerorelay.data.chat.RelaySessionCoordinator
+import app.zerorelay.data.crypto.AccountBackup
+import app.zerorelay.data.crypto.AccountBackupFiles
 import app.zerorelay.data.crypto.ContactExchange
 import app.zerorelay.data.crypto.GroupExchange
 import app.zerorelay.data.crypto.MessageCipher
 import app.zerorelay.data.crypto.RatchetBackup
 import app.zerorelay.data.crypto.RatchetBackupFiles
+import app.zerorelay.data.network.TlsPinStore
 import app.zerorelay.data.identity.IdentityStore
 import app.zerorelay.data.local.ConversationEntity
 import app.zerorelay.data.local.DetachedSessionStore
@@ -79,7 +82,11 @@ data class HomeUiState(
     val tlsPinned: Boolean = false,
     /** 证书轮换：待用户确认的新 pin */
     val pendingTlsPin: String? = null,
+    val showAccountBackupDialog: Boolean = false,
+    val accountBackupPassphrase: String = "",
+    val showAccountImportOverwriteDialog: Boolean = false,
     val showRatchetBackupDialog: Boolean = false,
+    val showRatchetAdvanced: Boolean = false,
     val ratchetBackupPassphrase: String = "",
     /** 打开私聊前：未验证联系人安全码确认 */
     val verifyContactDialog: Contact? = null,
@@ -109,6 +116,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
     private var conversationEntities: List<ConversationEntity> = emptyList()
+    private var pendingAccountImportBlob: String? = null
 
     init {
         RelaySessionCoordinator.start(application)
@@ -449,18 +457,165 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(pendingTlsPin = null, error = null) }
     }
 
-    fun showRatchetBackup(show: Boolean) = _uiState.update { it.copy(showRatchetBackupDialog = show) }
+    fun showAccountBackup(show: Boolean) = _uiState.update {
+        it.copy(
+            showAccountBackupDialog = show,
+            accountBackupPassphrase = if (show) it.accountBackupPassphrase else "",
+            error = if (show) null else it.error,
+        )
+    }
+
+    fun onAccountPassphraseChange(value: String) = _uiState.update { it.copy(accountBackupPassphrase = value) }
+
+    fun prepareAccountExport(): Boolean = validateBackupPassphrase(_uiState.value.accountBackupPassphrase)
+
+    fun exportAccountBackupToUri(uri: Uri, passphrase: String): Boolean {
+        val blob = buildAccountExportBlob(passphrase) ?: return false
+        val ok = AccountBackupFiles.write(getApplication(), uri, blob)
+        if (!ok) {
+            _uiState.update { it.copy(error = appStr(R.string.error_account_backup_write)) }
+            return false
+        }
+        _uiState.update {
+            it.copy(
+                showAccountBackupDialog = false,
+                accountBackupPassphrase = "",
+            )
+        }
+        AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_exported))
+        return true
+    }
+
+    fun importAccountBackupFromUri(uri: Uri, passphrase: String): Boolean {
+        if (!validateBackupPassphrase(passphrase)) return false
+        val blob = AccountBackupFiles.read(getApplication(), uri)
+        if (blob == null) {
+            _uiState.update { it.copy(error = appStr(R.string.error_account_backup_read)) }
+            return false
+        }
+        return beginAccountImport(blob, passphrase)
+    }
+
+    fun dismissAccountImportOverwrite() {
+        pendingAccountImportBlob = null
+        _uiState.update { it.copy(showAccountImportOverwriteDialog = false) }
+    }
+
+    fun confirmAccountImportOverwrite() {
+        val blob = pendingAccountImportBlob ?: return
+        val pass = _uiState.value.accountBackupPassphrase
+        pendingAccountImportBlob = null
+        _uiState.update { it.copy(showAccountImportOverwriteDialog = false) }
+        applyAccountImport(blob, pass)
+    }
+
+    fun showRatchetBackup(show: Boolean) = _uiState.update {
+        it.copy(
+            showRatchetBackupDialog = show,
+            ratchetBackupPassphrase = if (show) it.ratchetBackupPassphrase else "",
+            error = if (show) null else it.error,
+        )
+    }
+
+    fun setRatchetAdvanced(show: Boolean) = _uiState.update { it.copy(showRatchetAdvanced = show) }
 
     fun onRatchetPassphraseChange(value: String) = _uiState.update { it.copy(ratchetBackupPassphrase = value) }
 
-    fun prepareRatchetExport(): Boolean = validateRatchetPassphrase(_uiState.value.ratchetBackupPassphrase)
+    fun prepareRatchetExport(): Boolean = validateBackupPassphrase(_uiState.value.ratchetBackupPassphrase)
 
-    private fun validateRatchetPassphrase(pass: String): Boolean {
+    private fun validateBackupPassphrase(pass: String): Boolean {
         if (pass.length < 8) {
-            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_passphrase)) }
+            _uiState.update { it.copy(error = appStr(R.string.error_backup_passphrase)) }
             return false
         }
         return true
+    }
+
+    private fun shouldConfirmAccountOverwrite(): Boolean {
+        if (identityStore.hasAccountData()) return true
+        if (prefs.getServerUrl() != null) return true
+        return MessageCipher(getApplication()).exportAllRatchetsJson().length() > 0
+    }
+
+    private fun buildAccountExportPayload(): org.json.JSONObject {
+        val server = _uiState.value.serverUrl.takeIf { it.isNotBlank() }
+            ?: prefs.getServerUrl()
+            .orEmpty()
+        return org.json.JSONObject().apply {
+            put("identity", identityStore.exportSnapshotJson())
+            put("ratchets", MessageCipher(getApplication()).exportAllRatchetsJson())
+            if (server.isNotBlank()) put("serverUrl", ServerUrl.normalize(server))
+            put("tlsPins", TlsPinStore.exportAll(getApplication()))
+        }
+    }
+
+    private fun buildAccountExportBlob(pass: String): String? {
+        if (!validateBackupPassphrase(pass)) return null
+        return AccountBackup.encryptExport(pass.toCharArray(), buildAccountExportPayload())
+    }
+
+    private fun beginAccountImport(blob: String, passphrase: String): Boolean {
+        return try {
+            AccountBackup.decryptImport(passphrase.toCharArray(), blob)
+            if (shouldConfirmAccountOverwrite()) {
+                pendingAccountImportBlob = blob
+                _uiState.update { it.copy(showAccountImportOverwriteDialog = true) }
+                true
+            } else {
+                applyAccountImport(blob, passphrase)
+                true
+            }
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(error = appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)))
+            }
+            false
+        }
+    }
+
+    private fun applyAccountImport(blob: String, passphrase: String) {
+        try {
+            val payload = AccountBackup.decryptImport(passphrase.toCharArray(), blob)
+            identityStore.importSnapshotJson(payload.getJSONObject("identity"))
+            MessageCipher(getApplication()).importAllRatchetsJson(payload.getJSONObject("ratchets"))
+            payload.optString("serverUrl").takeIf { it.isNotBlank() }?.let { url ->
+                val normalized = ServerUrl.normalize(url)
+                prefs.setServerUrl(normalized)
+                _uiState.update { it.copy(serverUrl = normalized) }
+            }
+            if (payload.has("tlsPins")) {
+                TlsPinStore.importAll(getApplication(), payload.getJSONObject("tlsPins"))
+            }
+            reloadAccountUi()
+            _uiState.update {
+                it.copy(
+                    showAccountBackupDialog = false,
+                    accountBackupPassphrase = "",
+                    tlsPinned = RelayHttpClient.hasPin(getApplication(), _uiState.value.serverUrl),
+                )
+            }
+            AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_restored))
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(error = appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)))
+            }
+        }
+    }
+
+    private fun reloadAccountUi() {
+        val identity = identityStore.getOrCreateIdentity()
+        val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
+        val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
+        _uiState.update {
+            it.copy(
+                identity = identity,
+                serverUrl = server,
+                contacts = identityStore.getContacts(),
+                groups = identityStore.getGroups(),
+                myQrPayload = qr,
+                conversations = mapConversationRows(identityStore.getContacts(), identityStore.getGroups()),
+            )
+        }
     }
 
     private fun buildRatchetExportBlob(pass: String): String? {
@@ -523,10 +678,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun importRatchetBackup(blob: String): Boolean {
         val pass = _uiState.value.ratchetBackupPassphrase
-        if (pass.length < 8) {
-            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_passphrase)) }
-            return false
-        }
+        if (!validateBackupPassphrase(pass)) return false
         return try {
             val json = RatchetBackup.decryptImport(pass.toCharArray(), blob.trim())
             MessageCipher(getApplication()).importAllRatchetsJson(json)

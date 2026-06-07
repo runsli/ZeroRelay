@@ -7,7 +7,7 @@
     "zr": "./cli.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "scripts": {
     "setup:cli": "bash scripts/cli-setup.sh",
@@ -25,10 +25,10 @@
     "outputPath": "dist"
   },
   "dependencies": {
-    "@noble/curves": "^1.9.1",
+    "@noble/curves": "^2.2.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "^0.12.0",
-    "ws": "^8.20.1"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "pkg": "^5.8.1"

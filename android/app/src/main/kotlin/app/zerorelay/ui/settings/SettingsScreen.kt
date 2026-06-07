@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.R
+import app.zerorelay.data.crypto.AccountBackupFiles
 import app.zerorelay.data.crypto.RatchetBackupFiles
 import app.zerorelay.ui.components.ZeroRelayAppBar
 import app.zerorelay.ui.home.HomeViewModel
@@ -49,7 +50,8 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-    var pendingExportPassphrase by remember { mutableStateOf<String?>(null) }
+    var pendingAccountExportPassphrase by remember { mutableStateOf<String?>(null) }
+    var pendingRatchetExportPassphrase by remember { mutableStateOf<String?>(null) }
     var showClearMessagesDialog by remember { mutableStateOf(false) }
 
     val batteryOptLauncher = rememberLauncherForActivityResult(
@@ -58,17 +60,35 @@ fun SettingsScreen(
         viewModel.refreshBatteryOptimizationStatus()
     }
 
-    val exportBackupLauncher = rememberLauncherForActivityResult(
+    val exportAccountLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(AccountBackupFiles.MIME_TYPE),
+    ) { uri ->
+        val pass = pendingAccountExportPassphrase
+        if (uri != null && pass != null) {
+            viewModel.exportAccountBackupToUri(uri, pass)
+        }
+        pendingAccountExportPassphrase = null
+    }
+
+    val importAccountLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            viewModel.importAccountBackupFromUri(uri, state.accountBackupPassphrase)
+        }
+    }
+
+    val exportRatchetLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument(RatchetBackupFiles.MIME_TYPE),
     ) { uri ->
-        val pass = pendingExportPassphrase
+        val pass = pendingRatchetExportPassphrase
         if (uri != null && pass != null) {
             viewModel.exportRatchetBackupToUri(uri, pass)
         }
-        pendingExportPassphrase = null
+        pendingRatchetExportPassphrase = null
     }
 
-    val importBackupLauncher = rememberLauncherForActivityResult(
+    val importRatchetLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         if (uri != null) {
@@ -99,6 +119,61 @@ fun SettingsScreen(
         )
     }
 
+    if (state.showAccountImportOverwriteDialog) {
+        AlertDialog(
+            onDismissRequest = viewModel::dismissAccountImportOverwrite,
+            title = { Text(stringResource(R.string.account_backup_overwrite_title)) },
+            text = { Text(stringResource(R.string.account_backup_overwrite_body)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmAccountImportOverwrite) {
+                    Text(stringResource(R.string.action_import))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissAccountImportOverwrite) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
+
+    if (state.showAccountBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.showAccountBackup(false) },
+            title = { Text(stringResource(R.string.account_backup_title)) },
+            text = {
+                Column {
+                    Text(
+                        stringResource(R.string.account_backup_body),
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = state.accountBackupPassphrase,
+                        onValueChange = viewModel::onAccountPassphraseChange,
+                        label = { Text(stringResource(R.string.account_backup_passphrase_label)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = InputFieldShape,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (viewModel.prepareAccountExport()) {
+                        pendingAccountExportPassphrase = state.accountBackupPassphrase
+                        exportAccountLauncher.launch(AccountBackupFiles.DEFAULT_FILENAME)
+                    }
+                }) { Text(stringResource(R.string.account_backup_export_file)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    importAccountLauncher.launch(arrayOf(AccountBackupFiles.MIME_TYPE, "application/*"))
+                }) { Text(stringResource(R.string.account_backup_import_file)) }
+            },
+        )
+    }
+
     if (state.showRatchetBackupDialog) {
         AlertDialog(
             onDismissRequest = { viewModel.showRatchetBackup(false) },
@@ -118,28 +193,36 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = InputFieldShape,
                     )
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(
-                        onClick = { viewModel.exportRatchetBackupToClipboard() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.ratchet_export_clipboard)) }
-                    TextButton(
-                        onClick = { viewModel.importRatchetBackupFromClipboard() },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) { Text(stringResource(R.string.ratchet_import_clipboard)) }
+                    if (state.showRatchetAdvanced) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            stringResource(R.string.settings_ratchet_advanced_warning),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(
+                            onClick = { viewModel.exportRatchetBackupToClipboard() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.ratchet_export_clipboard)) }
+                        TextButton(
+                            onClick = { viewModel.importRatchetBackupFromClipboard() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(stringResource(R.string.ratchet_import_clipboard)) }
+                    }
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
                     if (viewModel.prepareRatchetExport()) {
-                        pendingExportPassphrase = state.ratchetBackupPassphrase
-                        exportBackupLauncher.launch(RatchetBackupFiles.DEFAULT_FILENAME)
+                        pendingRatchetExportPassphrase = state.ratchetBackupPassphrase
+                        exportRatchetLauncher.launch(RatchetBackupFiles.DEFAULT_FILENAME)
                     }
                 }) { Text(stringResource(R.string.ratchet_export_file)) }
             },
             dismissButton = {
                 TextButton(onClick = {
-                    importBackupLauncher.launch(arrayOf(RatchetBackupFiles.MIME_TYPE, "application/*"))
+                    importRatchetLauncher.launch(arrayOf(RatchetBackupFiles.MIME_TYPE, "application/*"))
                 }) { Text(stringResource(R.string.ratchet_import_file)) }
             },
         )
@@ -321,8 +404,24 @@ fun SettingsScreen(
 
             Text(stringResource(R.string.settings_security_backup), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { viewModel.showRatchetBackup(true) }) {
+            Text(
+                stringResource(R.string.settings_account_backup_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { viewModel.showAccountBackup(true) }) {
+                Text(stringResource(R.string.settings_account_backup))
+            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = {
+                viewModel.setRatchetAdvanced(false)
+                viewModel.showRatchetBackup(true)
+            }) {
                 Text(stringResource(R.string.settings_ratchet_backup))
+            }
+            TextButton(onClick = { viewModel.setRatchetAdvanced(true); viewModel.showRatchetBackup(true) }) {
+                Text(stringResource(R.string.ratchet_export_clipboard))
             }
         }
     }

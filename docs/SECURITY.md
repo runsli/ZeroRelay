@@ -26,6 +26,14 @@
 
 - System notifications show only **“You have a new message”** — no sender label or message body.
 
+## Android account backup (migration)
+
+- **Settings → Export / import account backup** writes `zero-relay-account-backup-v1` (passphrase-encrypted file).
+- Payload includes identity key pair, contacts, groups, ratchet state (same inner JSON as ratchet-only backup), relay server URL, and TLS SPKI pins.
+- **Migrate to a new device:** install ZeroRelay → import backup → open Settings and **test connection**; if the relay certificate rotated, confirm the new TLS pin when prompted.
+- Prefer **file export** over clipboard; ratchet-only backup remains under *Advanced* for partial restore.
+- Local chat message history is **not** included in account backup (restore chats separately or rely on new messages after reconnect).
+
 ## Supply chain
 
 ```bash

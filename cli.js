@@ -14,7 +14,7 @@ const os = require('os');
 let x25519;
 let qrcodeTerminal;
 try {
-  ({ x25519 } = require('@noble/curves/ed25519'));
+  ({ x25519 } = require('@noble/curves/ed25519.js'));
   qrcodeTerminal = require('qrcode-terminal');
 } catch {
   console.error('[-] 缺少依赖。新机器一键安装: ./scripts/cli-setup.sh');
@@ -166,7 +166,7 @@ function isGroupExpired(group) {
 function loadOrCreateIdentity() {
   ensureDataDir();
   return identityStore.loadIdentity(DATA_DIR, () => {
-    const privateKey = x25519.utils.randomPrivateKey();
+    const privateKey = x25519.utils.randomSecretKey();
     const publicKey = x25519.getPublicKey(privateKey);
     return {
       publicKey: Buffer.from(publicKey).toString('base64'),

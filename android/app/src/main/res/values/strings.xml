@@ -81,6 +81,7 @@
     <string name="paste_invite_title">粘贴邀请</string>
     <string name="paste_invite_placeholder">联系人公钥或群聊邀请链接</string>
     <string name="action_add">添加</string>
+    <string name="action_import">导入</string>
 
     <!-- Scan -->
     <string name="scan_qr_title">扫描其他二维码</string>
@@ -136,8 +137,24 @@
     <string name="settings_clear_messages_confirm_body">将删除所有房间的聊天历史，此操作不可撤销。</string>
     <string name="action_clear">清除</string>
     <string name="snackbar_messages_cleared">已清除所有本地消息</string>
-    <string name="settings_security_backup">安全与备份</string>
-    <string name="settings_ratchet_backup">棘轮状态备份 / 恢复</string>
+    <string name="settings_security_backup">账户与备份</string>
+    <string name="settings_account_backup">导出 / 导入账户备份</string>
+    <string name="settings_account_backup_hint">包含身份、联系人、群聊、棘轮状态、服务器地址与 TLS 指纹；请保存到加密文件，勿通过聊天转发</string>
+    <string name="settings_ratchet_backup">高级：仅棘轮状态备份</string>
+    <string name="settings_ratchet_advanced_warning">剪贴板备份易被其他应用读取，仅建议在无法使用文件时使用</string>
+    <string name="account_backup_title">账户备份</string>
+    <string name="account_backup_body">导出或导入完整账户（zero-relay-account-backup-v1）。换机后若 TLS 证书已轮换，可能需在设置中重新信任证书指纹。</string>
+    <string name="account_backup_export_file">导出到文件</string>
+    <string name="account_backup_import_file">从文件导入</string>
+    <string name="account_backup_overwrite_title">覆盖当前账户？</string>
+    <string name="account_backup_overwrite_body">导入将替换本机身份、联系人、群聊、棘轮与 TLS 指纹。此操作不可撤销。</string>
+    <string name="account_backup_passphrase_label">备份口令</string>
+    <string name="snackbar_account_backup_exported">账户备份已导出</string>
+    <string name="snackbar_account_backup_restored">账户备份已恢复</string>
+    <string name="error_account_backup_write">无法写入备份文件</string>
+    <string name="error_account_backup_read">无法读取备份文件</string>
+    <string name="error_account_backup_restore">恢复账户备份失败：%1$s</string>
+    <string name="error_backup_passphrase">备份口令至少 8 位</string>
 
     <!-- TLS dialog -->
     <string name="tls_pin_changed_title">服务器证书已变更</string>

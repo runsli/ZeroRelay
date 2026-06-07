@@ -9,7 +9,7 @@ LINK_GLOBAL=1
 [[ "${1:-}" == "--no-link" ]] && LINK_GLOBAL=0
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "[-] 未找到 node。请安装 Node.js 18+：https://nodejs.org/" >&2
+  echo "[-] 未找到 node。请安装 Node.js 20.19+：https://nodejs.org/" >&2
   exit 1
 fi
 

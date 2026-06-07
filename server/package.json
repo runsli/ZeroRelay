@@ -25,13 +25,13 @@
     "audit": "npm audit --audit-level=high"
   },
   "dependencies": {
-    "@noble/curves": "^1.9.1",
-    "hono": "^4.12.19",
-    "ws": "^8.20.1"
+    "@noble/curves": "^2.2.0",
+    "hono": "^4.12.23",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260516.1",
-    "typescript": "^5.9.3",
-    "wrangler": "^4.92.0"
+    "@cloudflare/workers-types": "^4.20260607.1",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.98.0"
   }
 }

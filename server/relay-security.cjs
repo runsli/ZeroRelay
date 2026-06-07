@@ -2,7 +2,7 @@
  * Node/CJS 版中继安全（与 src/relay-security.ts 行为一致）
  */
 const crypto = require('crypto');
-const { ed25519 } = require('@noble/curves/ed25519');
+const { ed25519 } = require('@noble/curves/ed25519.js');
 
 const LIMITS = {
   maxJsonBytes: 64 * 1024,

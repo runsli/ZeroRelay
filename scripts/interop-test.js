@@ -9,7 +9,7 @@ const https = require('https');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { x25519 } = require('@noble/curves/ed25519');
+const { x25519 } = require('@noble/curves/ed25519.js');
 
 const protocol = require('../cli-protocol');
 const relayCrypto = require('../cli-relay-crypto');
@@ -120,7 +120,7 @@ function waitUntil(fn, timeoutMs, intervalMs = 100) {
 }
 
 function createIdentity() {
-  const privateKey = x25519.utils.randomPrivateKey();
+  const privateKey = x25519.utils.randomSecretKey();
   const publicKey = x25519.getPublicKey(privateKey);
   return {
     publicKey: Buffer.from(publicKey).toString('base64'),

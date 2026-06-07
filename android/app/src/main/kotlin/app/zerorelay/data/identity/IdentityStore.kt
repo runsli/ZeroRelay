@@ -252,6 +252,35 @@ class IdentityStore(context: Context) {
         prefs.edit { putString(KEY_CONTACTS, arr.toString()) }
     }
 
+    fun hasAccountData(): Boolean = getContacts().isNotEmpty() || getGroups().isNotEmpty()
+
+    fun exportSnapshotJson(): JSONObject {
+        val identity = getOrCreateIdentity()
+        return JSONObject().apply {
+            put("publicKey", Base64.encodeToString(identity.publicKey, Base64.NO_WRAP))
+            put("privateKey", Base64.encodeToString(identity.privateKey, Base64.NO_WRAP))
+            put("contacts", JSONArray(prefs.getString(KEY_CONTACTS, "[]")))
+            put("groups", JSONArray(prefs.getString(KEY_GROUPS, "[]")))
+        }
+    }
+
+    fun importSnapshotJson(snapshot: JSONObject) {
+        val publicKey = Base64.decode(snapshot.getString("publicKey"), Base64.NO_WRAP)
+        val privateKey = Base64.decode(snapshot.getString("privateKey"), Base64.NO_WRAP)
+        require(publicKey.isNotEmpty() && privateKey.isNotEmpty()) { "身份密钥无效" }
+        securePrefs.edit {
+            putString(KEY_PUBLIC, Base64.encodeToString(publicKey, Base64.NO_WRAP))
+            remove(KEY_PRIVATE)
+            putString(KEY_PRIVATE_WRAPPED, SecureKeyStorage.wrapPrivateKey(privateKey))
+        }
+        val contacts = snapshot.getJSONArray("contacts").toString()
+        val groups = snapshot.getJSONArray("groups").toString()
+        prefs.edit {
+            putString(KEY_CONTACTS, contacts)
+            putString(KEY_GROUPS, groups)
+        }
+    }
+
     private fun saveGroups(groups: List<ChatGroup>) {
         val arr = JSONArray()
         groups.forEach { g ->

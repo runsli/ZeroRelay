@@ -2,7 +2,7 @@
  * 中继层安全（与 server/src/relay-security.ts、Android RelayCrypto 对齐）
  */
 const crypto = require('crypto');
-const { ed25519 } = require('@noble/curves/ed25519');
+const { ed25519 } = require('@noble/curves/ed25519.js');
 
 const ROOM_ACCESS_INFO = 'zero-relay-room-access-v1';
 const SIGN_HKDF_SALT = 'zero-relay-sign-v1';

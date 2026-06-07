@@ -5,6 +5,8 @@ import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import okhttp3.CertificatePinner.Companion.pin
+import org.json.JSONArray
+import org.json.JSONObject
 import java.security.cert.X509Certificate
 
 /**
@@ -57,6 +59,42 @@ object TlsPinStore {
     }
 
     fun hasPin(context: Context, host: String): Boolean = loadPins(context, host).isNotEmpty()
+
+    fun exportAll(context: Context): JSONObject {
+        migrateFromLegacyIfNeeded(context)
+        val out = JSONObject()
+        prefs(context).all.forEach { (host, value) ->
+            if (value is Set<*>) {
+                val pins = value.filterIsInstance<String>()
+                if (pins.isNotEmpty()) {
+                    out.put(host, JSONArray(pins))
+                }
+            }
+        }
+        return out
+    }
+
+    fun importAll(context: Context, export: JSONObject, replace: Boolean = true) {
+        migrateFromLegacyIfNeeded(context)
+        val p = prefs(context)
+        val edit = p.edit()
+        if (replace) {
+            p.all.keys.forEach { edit.remove(it) }
+        }
+        export.keys().forEach { host ->
+            val arr = export.optJSONArray(host) ?: return@forEach
+            val pins = buildSet {
+                for (i in 0 until arr.length()) {
+                    val pin = arr.optString(i, "").trim()
+                    if (pin.isNotEmpty()) add(pin)
+                }
+            }
+            if (pins.isNotEmpty()) {
+                edit.putStringSet(host, pins)
+            }
+        }
+        edit.apply()
+    }
 
     /** 握手证书 pin；若与已存 pin 集合不交集且已有 pin，返回新 pin 供用户确认 */
     fun evaluateHandshake(
