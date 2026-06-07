@@ -51,7 +51,7 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
-Unit tests (JVM, no device): `./gradlew :app:testDebugUnitTest`
+Unit tests (JVM, no device): `./gradlew :app:testDebugUnitTest` — covers crypto (`MessageCipher`, `ContactExchange`, backups, group invites) and runs on every `android/**` PR.
 
 Optional before opening a PR: `./gradlew :app:lintDebug` (same as **Android PR check** CI).
 

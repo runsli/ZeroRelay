@@ -134,6 +134,12 @@ android {
         compose = true
         buildConfig = true
     }
+
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
@@ -165,4 +171,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling.preview)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
 }

@@ -51,7 +51,7 @@ cd android
 ./gradlew :app:assembleDebug
 ```
 
-单元测试（JVM，无需设备）：`./gradlew :app:testDebugUnitTest`
+单元测试（JVM，无需设备）：`./gradlew :app:testDebugUnitTest` — 覆盖加密与邀请解析（含 `MessageCipher`、`ContactExchange` 等），`android/**` PR 均会执行。
 
 提 PR 前可选：`./gradlew :app:lintDebug`（与 **Android PR check** CI 相同）。
 
