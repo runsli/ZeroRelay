@@ -1,0 +1,45 @@
+# Fast compile + lint gate for pull requests (Debug; no APK artifact).
+name: Android PR check
+
+on:
+  pull_request:
+    paths:
+      - 'android/**'
+      - '.github/workflows/android-pr.yml'
+
+concurrency:
+  group: android-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify no signing keys in repository
+        run: bash scripts/verify-no-signing-in-repo.sh
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+          cache-dependency-path: |
+            android/**/*.gradle*
+            android/**/libs.versions.toml
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x android/gradlew
+
+      - name: Write local.properties
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > android/local.properties
+
+      - name: Compile Debug Kotlin and run lint
+        working-directory: android
+        run: ./gradlew :app:compileDebugKotlin :app:lintDebug --no-daemon --stacktrace
