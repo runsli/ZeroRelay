@@ -50,8 +50,11 @@ import androidx.activity.compose.BackHandler
 import android.view.WindowManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
@@ -68,6 +71,7 @@ import app.zerorelay.ui.snackbar.AppSnackbarBus
 fun ChatScreen(
     session: ChatSession,
     onLeave: () -> Unit,
+    onOpenSafetyNumber: () -> Unit = {},
     allowScreenshots: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -89,6 +93,16 @@ fun ChatScreen(
         onDispose {
             ActiveChatTracker.visibleRoomId = null
         }
+    }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                vm.refreshPeerVerification()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val activity = LocalContext.current as? ComponentActivity
     DisposableEffect(activity, allowScreenshots) {
@@ -223,11 +237,11 @@ fun ChatScreen(
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
                         Text(
-                            stringResource(R.string.chat_unverified_block_body, state.peerFingerprint),
+                            stringResource(R.string.chat_unverified_block_body),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onErrorContainer,
                         )
-                        TextButton(onClick = vm::markPeerVerified) {
+                        TextButton(onClick = onOpenSafetyNumber) {
                             Text(stringResource(R.string.chat_verify_mark_safe))
                         }
                     }

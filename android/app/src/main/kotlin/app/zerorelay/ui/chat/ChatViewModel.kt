@@ -282,12 +282,11 @@ class ChatViewModel(
         }
     }
 
-    fun markPeerVerified() {
+    fun refreshPeerVerification() {
         val session = boundSession ?: return
         if (session.isGroup) return
-        identityStore.markContactVerified(session.peerContactId)
-        _uiState.update { it.copy(peerNeedsVerification = false) }
-        AppSnackbarBus.show(appStr(R.string.chat_snackbar_peer_verified))
+        val verified = identityStore.findContact(session.peerContactId)?.verified == true
+        _uiState.update { it.copy(peerNeedsVerification = !verified) }
     }
 
     override fun onCleared() {

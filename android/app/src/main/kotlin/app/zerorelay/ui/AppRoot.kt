@@ -28,7 +28,9 @@ import androidx.compose.ui.Modifier
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatSession
+import app.zerorelay.data.model.Contact
 import app.zerorelay.ui.chat.ChatScreen
+import app.zerorelay.ui.safety.SafetyNumberScreen
 import app.zerorelay.ui.components.AdaptiveChatPlaceholder
 import app.zerorelay.ui.home.HomeScreen
 import app.zerorelay.ui.home.HomeViewModel
@@ -40,6 +42,18 @@ import app.zerorelay.ui.settings.SettingsScreen
 import app.zerorelay.ui.theme.ZeroRelayTheme
 import app.zerorelay.ui.util.rememberAppWidthClass
 import app.zerorelay.ui.util.supportsListDetail
+
+enum class SafetyNumberOrigin {
+    HomeList,
+    ContactMenu,
+    ChatBanner,
+}
+
+private data class SafetyNumberRequest(
+    val contact: Contact,
+    val origin: SafetyNumberOrigin,
+    val returnChat: ChatSession? = null,
+)
 
 private sealed interface RootScreen {
     data object Home : RootScreen
@@ -73,6 +87,7 @@ fun AppRoot(
         ) {
             var screen by remember { mutableStateOf<RootScreen>(RootScreen.Home) }
             var listDetailChat by remember { mutableStateOf<ChatSession?>(null) }
+            var safetyNumberRequest by remember { mutableStateOf<SafetyNumberRequest?>(null) }
 
             val openChat: (ChatSession) -> Unit = { session ->
                 if (listDetail) {
@@ -81,6 +96,53 @@ fun AppRoot(
                 } else {
                     screen = RootScreen.Chat(session)
                 }
+            }
+
+            val dismissSafetyNumber: () -> Unit = { safetyNumberRequest = null }
+
+            val finishSafetyNumberLater: (SafetyNumberRequest) -> Unit = { request ->
+                when (request.origin) {
+                    SafetyNumberOrigin.HomeList -> {
+                        homeViewModel.createSession(request.contact)?.let(openChat)
+                    }
+                    SafetyNumberOrigin.ContactMenu -> Unit
+                    SafetyNumberOrigin.ChatBanner -> {
+                        request.returnChat?.let { session ->
+                            if (listDetail) {
+                                listDetailChat = session
+                                screen = RootScreen.Home
+                            } else {
+                                screen = RootScreen.Chat(session)
+                            }
+                        }
+                    }
+                }
+                dismissSafetyNumber()
+            }
+
+            val finishSafetyNumberConfirmed: (SafetyNumberRequest) -> Unit = { request ->
+                homeViewModel.markContactVerified(request.contact.id)
+                when (request.origin) {
+                    SafetyNumberOrigin.HomeList -> {
+                        homeViewModel.createSession(request.contact)?.let(openChat)
+                    }
+                    SafetyNumberOrigin.ContactMenu -> Unit
+                    SafetyNumberOrigin.ChatBanner -> {
+                        request.returnChat?.let { session ->
+                            if (listDetail) {
+                                listDetailChat = session
+                                screen = RootScreen.Home
+                            } else {
+                                screen = RootScreen.Chat(session)
+                            }
+                        }
+                    }
+                }
+                dismissSafetyNumber()
+            }
+
+            val openSafetyNumber: (Contact, SafetyNumberOrigin, ChatSession?) -> Unit = { contact, origin, returnChat ->
+                safetyNumberRequest = SafetyNumberRequest(contact, origin, returnChat)
             }
 
             LaunchedEffect(homeState.identity, pendingNotificationRoomId) {
@@ -107,6 +169,9 @@ fun AppRoot(
                                         .weight(0.42f)
                                         .fillMaxHeight(),
                                     onOpenChat = openChat,
+                                    onOpenSafetyNumber = { contact, origin ->
+                                        openSafetyNumber(contact, origin, null)
+                                    },
                                     onScanQr = { screen = RootScreen.ScanQr },
                                     onOpenSettings = { screen = RootScreen.Settings },
                                     viewModel = homeViewModel,
@@ -116,6 +181,16 @@ fun AppRoot(
                                     ChatScreen(
                                         session = listDetailChat!!,
                                         onLeave = { listDetailChat = null },
+                                        onOpenSafetyNumber = {
+                                            homeViewModel.findContact(listDetailChat!!.peerContactId)
+                                                ?.let { contact ->
+                                                    openSafetyNumber(
+                                                        contact,
+                                                        SafetyNumberOrigin.ChatBanner,
+                                                        listDetailChat,
+                                                    )
+                                                }
+                                        },
                                         allowScreenshots = homeState.allowScreenshots,
                                         modifier = Modifier
                                             .weight(0.58f)
@@ -132,6 +207,9 @@ fun AppRoot(
                         } else {
                             HomeScreen(
                                 onOpenChat = openChat,
+                                onOpenSafetyNumber = { contact, origin ->
+                                    openSafetyNumber(contact, origin, null)
+                                },
                                 onScanQr = { screen = RootScreen.ScanQr },
                                 onOpenSettings = { screen = RootScreen.Settings },
                                 viewModel = homeViewModel,
@@ -163,9 +241,48 @@ fun AppRoot(
                         ChatScreen(
                             session = current.session,
                             onLeave = { screen = RootScreen.Home },
+                            onOpenSafetyNumber = {
+                                homeViewModel.findContact(current.session.peerContactId)
+                                    ?.let { contact ->
+                                        openSafetyNumber(
+                                            contact,
+                                            SafetyNumberOrigin.ChatBanner,
+                                            current.session,
+                                        )
+                                    }
+                            },
                             allowScreenshots = homeState.allowScreenshots,
                         )
                     }
+                }
+            }
+
+            safetyNumberRequest?.let { request ->
+                val identity = homeState.identity
+                BackHandler {
+                    if (request.origin == SafetyNumberOrigin.ChatBanner) {
+                        finishSafetyNumberLater(request)
+                    } else {
+                        dismissSafetyNumber()
+                    }
+                }
+                if (identity != null) {
+                    SafetyNumberScreen(
+                        contact = request.contact,
+                        myFingerprint = identity.fingerprint,
+                        onConfirm = { finishSafetyNumberConfirmed(request) },
+                        onLater = { finishSafetyNumberLater(request) },
+                        onBack = {
+                            if (request.origin == SafetyNumberOrigin.ChatBanner) {
+                                finishSafetyNumberLater(request)
+                            } else {
+                                dismissSafetyNumber()
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    LaunchedEffect(Unit) { dismissSafetyNumber() }
                 }
             }
 

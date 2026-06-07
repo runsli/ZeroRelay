@@ -38,6 +38,7 @@ import app.zerorelay.ui.home.HomeUiState
 import app.zerorelay.ui.home.HomeViewModel
 import app.zerorelay.ui.home.OnboardingStep
 import app.zerorelay.ui.theme.InputFieldShape
+import app.zerorelay.ui.safety.SafetyNumberFormat
 import app.zerorelay.ui.util.generateQrBitmap
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -235,9 +236,13 @@ private fun OnboardingIdentityStep(state: HomeUiState) {
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = stringResource(R.string.my_qr_fingerprint, identity.fingerprint),
+            text = stringResource(
+                R.string.my_qr_fingerprint,
+                SafetyNumberFormat.displayText(identity.fingerprint),
+            ),
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(

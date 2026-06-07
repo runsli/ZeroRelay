@@ -74,6 +74,7 @@
     <string name="home_contact_verified">已核对安全码</string>
     <string name="home_contact_unverified_hint">进入前需与对方当面核对安全码</string>
     <string name="home_menu_mark_verified">标记已验证</string>
+    <string name="home_menu_verify_safety_number">核对安全码</string>
     <string name="home_menu_edit_nickname">编辑昵称</string>
     <string name="home_menu_delete_contact">删除联系人</string>
     <string name="home_search_placeholder">搜索会话、联系人、群聊</string>
@@ -118,13 +119,14 @@
     <string name="action_create">创建</string>
     <string name="action_cancel">取消</string>
 
-    <!-- Verify contact -->
-    <string name="verify_contact_title">验证联系人</string>
-    <string name="verify_contact_body">请让对方在「我的二维码」或聊天顶栏菜单中出示安全码，与你下方显示的一致后再继续。</string>
-    <string name="verify_contact_fingerprint_label">对方安全码</string>
-    <string name="verify_contact_display_name">备注名：%1$s</string>
-    <string name="verify_contact_confirm">已核对，进入聊天</string>
-    <string name="verify_contact_later">稍后验证</string>
+    <!-- Safety number verification -->
+    <string name="safety_number_title">核对安全码</string>
+    <string name="safety_number_instruction">请与对方当面比对双方安全码是否完全一致，确认无误后再标记为安全。</string>
+    <string name="safety_number_mine_label">你的安全码</string>
+    <string name="safety_number_theirs_label">%1$s 的安全码</string>
+    <string name="safety_number_confirm">已核对，标记为安全</string>
+    <string name="safety_number_later">稍后</string>
+    <string name="safety_number_group_note">仅单聊需要核对安全码；群聊消息由群密钥保护，规则不变。</string>
 
     <!-- Paste invite -->
     <string name="paste_invite_title">粘贴邀请</string>
@@ -236,7 +238,7 @@
     <string name="snackbar_copied_group_id">已复制群 ID</string>
     <string name="snackbar_copied_fingerprint">已复制安全码</string>
     <string name="chat_unverified_block_title">未验证联系人 — 已禁止发送</string>
-    <string name="chat_unverified_block_body">请当面核对安全码（顶部菜单可复制）：\n%1$s</string>
+    <string name="chat_unverified_block_body">请与对方当面核对安全码是否一致，再标记为安全。发送消息已暂时禁用。</string>
     <string name="home_label_unverified_short">未验证</string>
     <string name="home_create_group_warning">警告：已勾选 %1$d 位未验证联系人，建议先单聊核对安全码后再建群。</string>
     <string name="home_group_member_count">%1$d 人</string>
@@ -245,7 +247,7 @@
     <string name="chat_empty_title">暂无消息</string>
     <string name="chat_empty_subtitle">发送第一条消息，开始端到端加密对话</string>
     <string name="chat_verify_banner">对方尚未验证。请核对安全码后再发送敏感内容。</string>
-    <string name="chat_verify_mark_safe">已核对，标记为安全并允许发送</string>
+    <string name="chat_verify_mark_safe">核对安全码</string>
     <string name="chat_input_placeholder">发消息</string>
 
     <!-- Snackbars / copies -->

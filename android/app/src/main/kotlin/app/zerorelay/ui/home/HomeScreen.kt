@@ -70,7 +70,7 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import app.zerorelay.BuildConfig
+import app.zerorelay.ui.SafetyNumberOrigin
 import app.zerorelay.ui.notification.ChatNotificationHelper
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +88,7 @@ import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.ui.home.RelayStatusBarState
 import app.zerorelay.data.model.Contact
+import app.zerorelay.ui.safety.SafetyNumberFormat
 import app.zerorelay.ui.theme.CardShape
 import app.zerorelay.ui.util.BatteryOptimizationHelper
 import app.zerorelay.ui.theme.InputFieldShape
@@ -99,6 +100,7 @@ import app.zerorelay.ui.util.useNavigationRail
 @Composable
 fun HomeScreen(
     onOpenChat: (ChatSession) -> Unit,
+    onOpenSafetyNumber: (Contact, SafetyNumberOrigin) -> Unit,
     onScanQr: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
@@ -134,7 +136,7 @@ fun HomeScreen(
 
     fun openContactChat(contact: Contact) {
         if (!contact.verified) {
-            viewModel.showVerifyContactDialog(contact)
+            onOpenSafetyNumber(contact, SafetyNumberOrigin.HomeList)
         } else {
             viewModel.createSession(contact)?.let(onOpenChat)
         }
@@ -142,8 +144,9 @@ fun HomeScreen(
 
     fun openConversation(row: ConversationRowUi) {
         if (row.peerNeedsVerification) {
-            viewModel.contactForConversation(row)?.let(viewModel::showVerifyContactDialog)
-                ?: viewModel.openConversation(row.roomId)?.let(onOpenChat)
+            viewModel.contactForConversation(row)?.let { contact ->
+                onOpenSafetyNumber(contact, SafetyNumberOrigin.HomeList)
+            } ?: viewModel.openConversation(row.roomId)?.let(onOpenChat)
         } else {
             viewModel.openConversation(row.roomId)?.let(onOpenChat)
         }
@@ -166,9 +169,13 @@ fun HomeScreen(
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = stringResource(R.string.my_qr_fingerprint, identity.fingerprint),
+                        text = stringResource(
+                            R.string.my_qr_fingerprint,
+                            SafetyNumberFormat.displayText(identity.fingerprint),
+                        ),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
@@ -342,59 +349,6 @@ fun HomeScreen(
         )
     }
 
-    state.verifyContactDialog?.let { contact ->
-        AlertDialog(
-            onDismissRequest = viewModel::dismissVerifyContactDialog,
-            title = { Text(stringResource(R.string.verify_contact_title)) },
-            text = {
-                Column {
-                    Text(
-                        stringResource(R.string.verify_contact_body),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(16.dp))
-                    Text(
-                        stringResource(R.string.verify_contact_fingerprint_label),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        contact.fingerprint,
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    if (!contact.displayName.equals(contact.fingerprint, ignoreCase = true)) {
-                        Spacer(Modifier.height(12.dp))
-                        Text(
-                            stringResource(R.string.verify_contact_display_name, contact.displayName),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.markVerifiedAndCreateSession(contact.id)?.let(onOpenChat)
-                }) { Text(stringResource(R.string.verify_contact_confirm)) }
-            },
-            dismissButton = if (BuildConfig.DEBUG) {
-                {
-                    TextButton(onClick = {
-                        viewModel.createSessionAllowingUnverified(contact)?.let(onOpenChat)
-                    }) { Text(stringResource(R.string.verify_contact_later)) }
-                }
-            } else {
-                {
-                    TextButton(onClick = viewModel::dismissVerifyContactDialog) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-                }
-            },
-        )
-    }
-
     state.nicknameDialogContact?.let { contact ->
         AlertDialog(
             onDismissRequest = viewModel::skipNicknameDialog,
@@ -557,6 +511,7 @@ fun HomeScreen(
                     openContactChat = { openContactChat(it) },
                     onOpenConversation = { openConversation(it) },
                     onOpenChat = onOpenChat,
+                    onOpenSafetyNumber = onOpenSafetyNumber,
                     viewModel = viewModel,
                     onScanQr = onScanQr,
                     onOpenSettings = onOpenSettings,
@@ -574,6 +529,7 @@ fun HomeScreen(
                 openContactChat = { openContactChat(it) },
                 onOpenConversation = { openConversation(it) },
                 onOpenChat = onOpenChat,
+                onOpenSafetyNumber = onOpenSafetyNumber,
                 viewModel = viewModel,
                 onScanQr = onScanQr,
                 onOpenSettings = onOpenSettings,
@@ -596,6 +552,7 @@ private fun HomeMainList(
     openContactChat: (Contact) -> Unit,
     onOpenConversation: (ConversationRowUi) -> Unit,
     onOpenChat: (ChatSession) -> Unit,
+    onOpenSafetyNumber: (Contact, SafetyNumberOrigin) -> Unit,
     viewModel: HomeViewModel,
     onScanQr: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -700,7 +657,9 @@ private fun HomeMainList(
                 onOpenGroupChat = { viewModel.createGroupSession(it)?.let(onOpenChat) },
                 onEditNickname = viewModel::openEditNickname,
                 onDeleteContact = viewModel::deleteContact,
-                onVerifyContact = viewModel::markContactVerified,
+                onOpenSafetyNumber = { contact ->
+                    onOpenSafetyNumber(contact, SafetyNumberOrigin.ContactMenu)
+                },
                 onDeleteGroup = viewModel::deleteGroup,
                 onShowInvite = viewModel::showGroupInvite,
             )
@@ -724,7 +683,9 @@ private fun HomeMainList(
                     contacts = state.contacts,
                     onOpenChat = { openContactChat(it) },
                     onDelete = viewModel::deleteContact,
-                    onVerify = viewModel::markContactVerified,
+                    onOpenSafetyNumber = { contact ->
+                        onOpenSafetyNumber(contact, SafetyNumberOrigin.ContactMenu)
+                    },
                     onEditNickname = viewModel::openEditNickname,
                     onScanQr = onScanQr,
                     onPasteInvite = viewModel::openPasteDialog,
@@ -799,7 +760,7 @@ private fun HomeSearchResults(
     onOpenGroupChat: (ChatGroup) -> Unit,
     onEditNickname: (Contact) -> Unit,
     onDeleteContact: (String) -> Unit,
-    onVerifyContact: (String) -> Unit,
+    onOpenSafetyNumber: (Contact) -> Unit,
     onDeleteGroup: (String) -> Unit,
     onShowInvite: (ChatGroup) -> Unit,
 ) {
@@ -838,7 +799,7 @@ private fun HomeSearchResults(
                     contact = contact,
                     onClick = { openContactChat(contact) },
                     onDelete = { onDeleteContact(contact.id) },
-                    onVerify = { onVerifyContact(contact.id) },
+                    onOpenSafetyNumber = { onOpenSafetyNumber(contact) },
                     onEditNickname = { onEditNickname(contact) },
                 )
             }
@@ -1005,7 +966,7 @@ private fun ContactsTab(
     contacts: List<Contact>,
     onOpenChat: (Contact) -> Unit,
     onDelete: (String) -> Unit,
-    onVerify: (String) -> Unit,
+    onOpenSafetyNumber: (Contact) -> Unit,
     onEditNickname: (Contact) -> Unit,
     onScanQr: () -> Unit,
     onPasteInvite: () -> Unit,
@@ -1026,7 +987,7 @@ private fun ContactsTab(
                     contact = contact,
                     onClick = { onOpenChat(contact) },
                     onDelete = { onDelete(contact.id) },
-                    onVerify = { onVerify(contact.id) },
+                    onOpenSafetyNumber = { onOpenSafetyNumber(contact) },
                     onEditNickname = { onEditNickname(contact) },
                 )
             }
@@ -1295,11 +1256,11 @@ private fun ContactRow(
     contact: Contact,
     onClick: () -> Unit,
     onDelete: () -> Unit,
-    onVerify: () -> Unit,
+    onOpenSafetyNumber: () -> Unit,
     onEditNickname: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val markVerifiedLabel = stringResource(R.string.home_menu_mark_verified)
+    val verifySafetyNumberLabel = stringResource(R.string.home_menu_verify_safety_number)
     val editNicknameLabel = stringResource(R.string.home_menu_edit_nickname)
     val deleteContactLabel = stringResource(R.string.home_menu_delete_contact)
     Surface(
@@ -1347,7 +1308,7 @@ private fun ContactRow(
                 HomeListOverflowMenu(
                     items = buildList {
                         add(editNicknameLabel to onEditNickname)
-                        if (!contact.verified) add(markVerifiedLabel to onVerify)
+                        if (!contact.verified) add(verifySafetyNumberLabel to onOpenSafetyNumber)
                         add(deleteContactLabel to onDelete)
                     },
                     destructiveLast = true,

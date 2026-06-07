@@ -103,8 +103,6 @@ data class HomeUiState(
     val showRatchetBackupDialog: Boolean = false,
     val showRatchetAdvanced: Boolean = false,
     val ratchetBackupPassphrase: String = "",
-    /** 打开私聊前：未验证联系人安全码确认 */
-    val verifyContactDialog: Contact? = null,
     /** Material You 动态配色；关闭时使用 #0F9D47 品牌主题。 */
     val useDynamicColor: Boolean = true,
     /** 为 true 时允许系统截图/录屏聊天界面。 */
@@ -492,22 +490,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         return _uiState.value.contacts.filter { it.id in ids && !it.verified }
     }
 
-    fun showVerifyContactDialog(contact: Contact) =
-        _uiState.update { it.copy(verifyContactDialog = contact, error = null) }
-
-    fun dismissVerifyContactDialog() = _uiState.update { it.copy(verifyContactDialog = null) }
-
-    fun markVerifiedAndCreateSession(contactId: String): ChatSession? {
-        identityStore.markContactVerified(contactId)
-        refreshContacts()
-        dismissVerifyContactDialog()
-        return _uiState.value.contacts.find { it.id == contactId }?.let { createSession(it) }
-    }
-
-    fun createSessionAllowingUnverified(contact: Contact): ChatSession? {
-        dismissVerifyContactDialog()
-        return createSession(contact)
-    }
+    fun findContact(id: String): Contact? = identityStore.findContact(id)
 
     fun confirmCreateGroup(): Boolean {
         val name = _uiState.value.createGroupName
