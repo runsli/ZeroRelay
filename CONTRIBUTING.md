@@ -27,11 +27,18 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 Default server URL is `http://127.0.0.1:8787` if `ZERO_RELAY_SERVER` is unset.
 
+## Server TypeScript check
+
+```bash
+cd server && npm ci && npm run check
+```
+
 ## CI checks (pull requests)
 
 | Check | When it runs |
 |-------|----------------|
 | **Android PR check** | PRs that change `android/**` — string key parity, `compileDebugKotlin` + `lintDebug` |
+| **Server PR check** | PRs that change `server/**` — `tsc` via `npm run check` |
 | **Interop test** | PRs that change `cli*.js`, `server/**`, `scripts/interop-test.js`, or `android/**/crypto/**` |
 | **Security audit** | All PRs — `npm audit` on root and `server/` |
 

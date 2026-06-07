@@ -1,0 +1,40 @@
+# TypeScript check for the relay worker (fast gate; no deploy).
+name: Server PR check
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-pr.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/server-pr.yml'
+
+concurrency:
+  group: server-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify no signing keys in repository
+        run: bash scripts/verify-no-signing-in-repo.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: TypeScript check
+        working-directory: server
+        run: |
+          npm ci
+          npm run check

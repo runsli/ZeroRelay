@@ -27,11 +27,18 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 
 未设置 `ZERO_RELAY_SERVER` 时，默认使用 `http://127.0.0.1:8787`。
 
+## Server TypeScript 检查
+
+```bash
+cd server && npm ci && npm run check
+```
+
 ## CI 检查（Pull Request）
 
 | 检查 | 触发条件 |
 |------|----------|
 | **Android PR check** | PR 改动 `android/**` — 文案 key 一致性、`compileDebugKotlin` + `lintDebug` |
+| **Server PR check** | PR 改动 `server/**` — `npm run check`（`tsc`） |
 | **Interop test** | PR 改动 `cli*.js`、`server/**`、`scripts/interop-test.js` 或 `android/**/crypto/**` |
 | **Security audit** | 所有 PR — 对根目录与 `server/` 执行 `npm audit` |
 
