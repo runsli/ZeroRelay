@@ -130,11 +130,10 @@ fun OnboardingScreen(
             )
             Spacer(Modifier.height(20.dp))
 
-            state.error?.let { error ->
-                Text(
-                    text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
+            state.userError?.let { error ->
+                app.zerorelay.ui.components.UserErrorBanner(
+                    error = error,
+                    onDismiss = viewModel::clearUserError,
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
             }

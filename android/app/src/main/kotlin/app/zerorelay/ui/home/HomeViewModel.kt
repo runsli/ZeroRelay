@@ -35,6 +35,8 @@ import app.zerorelay.data.network.RelaySecurityPolicy
 import app.zerorelay.data.network.ServerHealth
 import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.session.SessionFactory
+import app.zerorelay.ui.error.UserError
+import app.zerorelay.ui.error.UserErrorKind
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import app.zerorelay.ui.util.BatteryOptimizationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -67,7 +69,7 @@ enum class RelayStatusBarState {
 sealed class ScanHandleResult {
     data object ContactAdded : ScanHandleResult()
     data class GroupJoined(val session: ChatSession) : ScanHandleResult()
-    data class Error(val message: String) : ScanHandleResult()
+    data class Error(val userError: UserError) : ScanHandleResult()
 }
 
 sealed class PasteResult {
@@ -84,7 +86,7 @@ data class HomeUiState(
     val selectedTab: HomeTab = HomeTab.Conversations,
     val conversations: List<ConversationRowUi> = emptyList(),
     val myQrPayload: String = "",
-    val error: String? = null,
+    val userError: UserError? = null,
     val showMyQr: Boolean = false,
     val showPasteDialog: Boolean = false,
     val pasteText: String = "",
@@ -92,6 +94,7 @@ data class HomeUiState(
     val createGroupName: String = "",
     val createGroupMemberIds: Set<String> = emptySet(),
     val inviteGroup: ChatGroup? = null,
+    val inviteHighlightRotation: Boolean = false,
     val serverChecking: Boolean = false,
     val serverCheckOk: Boolean? = null,
     val tlsPinned: Boolean = false,
@@ -268,10 +271,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (value.trim() != it.serverUrl.trim()) {
             prefs.setServerTested(false)
         }
-        withSetupFlags(it.copy(serverUrl = value, error = null, serverCheckOk = null))
+        withSetupFlags(it.copy(serverUrl = value, userError = null, serverCheckOk = null))
     }
 
-    fun selectTab(tab: HomeTab) = _uiState.update { it.copy(selectedTab = tab, error = null) }
+    fun selectTab(tab: HomeTab) = _uiState.update { it.copy(selectedTab = tab, userError = null) }
 
     fun setSearchActive(active: Boolean) = _uiState.update { it.copy(searchActive = active) }
 
@@ -302,7 +305,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 nicknameDialogContact = contact,
                 nicknameDraft = contact.displayName,
                 nicknameIsEdit = true,
-                error = null,
+                userError = null,
             )
         }
     }
@@ -325,7 +328,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 nicknameDialogContact = contact,
                 nicknameDraft = contact.displayName,
                 nicknameIsEdit = false,
-                error = null,
+                userError = null,
             )
         }
     }
@@ -344,11 +347,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun saveServerUrl() {
         val url = ServerUrl.normalize(_uiState.value.serverUrl)
         if (url.isEmpty()) {
-            _uiState.update { it.copy(error = appStr(R.string.error_server_required)) }
+            setUserError(UserErrorKind.ServerRequired)
             return
         }
         if (RelaySecurityPolicy.requiresTlsPin(url) && !RelayHttpClient.hasPin(getApplication(), url)) {
-            _uiState.update { it.copy(error = appStr(R.string.error_release_tls_pin_required)) }
+            setUserError(UserErrorKind.ReleaseTlsRequired)
             return
         }
         prefs.setServerUrl(url)
@@ -358,7 +361,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun testServerConnection() {
         viewModelScope.launch {
             val raw = _uiState.value.serverUrl
-            _uiState.update { it.copy(serverChecking = true, error = null, serverCheckOk = null) }
+            _uiState.update { it.copy(serverChecking = true, userError = null, serverCheckOk = null) }
             ServerHealth.check(getApplication(), raw)
                 .onSuccess { result ->
                     prefs.setServerUrl(result.normalizedUrl)
@@ -369,7 +372,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 serverUrl = result.normalizedUrl,
                                 serverChecking = false,
                                 serverCheckOk = true,
-                                error = null,
+                                userError = null,
                                 pendingTlsPin = null,
                                 tlsPinned = RelayHttpClient.hasPin(getApplication(), result.normalizedUrl),
                             ),
@@ -391,7 +394,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                     serverChecking = false,
                                     serverCheckOk = false,
                                     pendingTlsPin = e.newPin,
-                                    error = appStr(R.string.error_tls_changed),
+                                    userError = UserError(UserErrorKind.TlsChanged),
                                 )
                             }
                         }
@@ -400,8 +403,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 it.copy(
                                     serverChecking = false,
                                     serverCheckOk = false,
-                                    error = appStr(
-                                        R.string.error_server_unreachable,
+                                    userError = UserError(
+                                        UserErrorKind.ServerUnreachable,
                                         e.message ?: appStr(R.string.error_unknown),
                                     ),
                                 )
@@ -418,7 +421,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             withSetupFlags(
                 state.copy(
                     contacts = contacts,
-                    error = null,
+                    userError = null,
                     conversations = mapConversationRows(contacts, state.groups),
                 ),
             )
@@ -431,7 +434,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val groups = identityStore.getGroups()
             state.copy(
                 groups = groups,
-                error = null,
+                userError = null,
                 conversations = mapConversationRows(state.contacts, groups),
             )
         }
@@ -456,7 +459,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun closeMyQr() = _uiState.update { it.copy(showMyQr = false) }
 
-    fun openPasteDialog() = _uiState.update { it.copy(showPasteDialog = true, pasteText = "", error = null) }
+    fun openPasteDialog() = _uiState.update { it.copy(showPasteDialog = true, pasteText = "", userError = null) }
 
     fun closePasteDialog() = _uiState.update { it.copy(showPasteDialog = false, pasteText = "") }
 
@@ -467,7 +470,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             showCreateGroup = true,
             createGroupName = "",
             createGroupMemberIds = emptySet(),
-            error = null,
+            userError = null,
         )
     }
 
@@ -505,19 +508,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     createGroupMemberIds = emptySet(),
                     inviteGroup = group,
                     selectedTab = HomeTab.Groups,
-                    error = null,
+                    userError = null,
                 )
             }
             true
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_create_group)) }
+            setUserError(UserErrorKind.CreateGroup, e.message)
             false
         }
     }
 
-    fun closeGroupInvite() = _uiState.update { it.copy(inviteGroup = null) }
+    fun closeGroupInvite() = _uiState.update { it.copy(inviteGroup = null, inviteHighlightRotation = false) }
 
-    fun showGroupInvite(group: ChatGroup) = _uiState.update { it.copy(inviteGroup = group) }
+    fun showGroupInvite(group: ChatGroup) = _uiState.update {
+        it.copy(inviteGroup = group, inviteHighlightRotation = false)
+    }
 
     fun addFromPaste(): PasteResult {
         val raw = _uiState.value.pasteText
@@ -529,17 +534,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         showPasteDialog = false,
                         pasteText = "",
                         selectedTab = HomeTab.Groups,
-                        error = null,
+                        userError = null,
                     )
                 }
                 PasteResult.GroupJoined(session)
             } catch (e: Exception) {
-                _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_join_group)) }
+                setUserError(UserErrorKind.JoinGroup, e.message)
                 PasteResult.Failed
             }
         }
         val contactPayload = ContactExchange.parse(raw) ?: run {
-            _uiState.update { it.copy(error = appStr(R.string.error_parse_invite)) }
+            setUserError(UserErrorKind.ParseInvite)
             return PasteResult.Failed
         }
         return if (addContactPayload(contactPayload)) {
@@ -551,29 +556,31 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun handleScan(raw: String): ScanHandleResult {
         if (_uiState.value.identity == null) {
-            return ScanHandleResult.Error(appStr(R.string.error_not_ready))
+            return ScanHandleResult.Error(UserError(UserErrorKind.NotReady))
         }
         GroupExchange.parse(raw)?.let { payload ->
             return try {
                 val session = joinGroupAndCreateSession(payload)
-                _uiState.update { it.copy(selectedTab = HomeTab.Groups, error = null) }
+                _uiState.update { it.copy(selectedTab = HomeTab.Groups, userError = null) }
                 ScanHandleResult.GroupJoined(session)
             } catch (e: Exception) {
-                val msg = e.message ?: appStr(R.string.error_join_group)
-                _uiState.update { it.copy(error = msg) }
-                ScanHandleResult.Error(msg)
+                val err = UserError(UserErrorKind.JoinGroup, e.message)
+                _uiState.update { it.copy(userError = err) }
+                ScanHandleResult.Error(err)
             }
         }
         val contactPayload = ContactExchange.parse(raw)
             ?: run {
-                val msg = appStr(R.string.error_scan_unrecognized)
-                _uiState.update { it.copy(error = msg) }
-                return ScanHandleResult.Error(msg)
+                val err = UserError(UserErrorKind.ScanUnrecognized)
+                _uiState.update { it.copy(userError = err) }
+                return ScanHandleResult.Error(err)
             }
         return if (addContactPayload(contactPayload)) {
             ScanHandleResult.ContactAdded
         } else {
-            ScanHandleResult.Error(_uiState.value.error ?: appStr(R.string.error_add_failed))
+            ScanHandleResult.Error(
+                _uiState.value.userError ?: UserError(UserErrorKind.AddContactFailed),
+            )
         }
     }
 
@@ -583,11 +590,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             val contact = identityStore.addContactFromPayload(payload)
             hub.registerContactConversation(identity, contact)
             refreshContacts()
-            _uiState.update { it.copy(showPasteDialog = false, pasteText = "", error = null) }
+            _uiState.update { it.copy(showPasteDialog = false, pasteText = "", userError = null) }
             promptNicknameDialog(contact)
             true
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_add_failed)) }
+            setUserError(UserErrorKind.AddContactFailed, e.message)
             false
         }
     }
@@ -627,7 +634,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     pendingTlsPin = null,
                     tlsPinned = true,
                     serverCheckOk = true,
-                    error = null,
+                    userError = null,
                 ),
             )
         }
@@ -635,14 +642,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun dismissPendingTlsPin() {
-        _uiState.update { it.copy(pendingTlsPin = null, error = null) }
+        _uiState.update { it.copy(pendingTlsPin = null, userError = null) }
     }
 
     fun showAccountBackup(show: Boolean) = _uiState.update {
         it.copy(
             showAccountBackupDialog = show,
             accountBackupPassphrase = if (show) it.accountBackupPassphrase else "",
-            error = if (show) null else it.error,
+            userError = if (show) null else it.userError,
         )
     }
 
@@ -654,7 +661,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val blob = buildAccountExportBlob(passphrase) ?: return false
         val ok = AccountBackupFiles.write(getApplication(), uri, blob)
         if (!ok) {
-            _uiState.update { it.copy(error = appStr(R.string.error_account_backup_write)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_account_backup_write))
             return false
         }
         _uiState.update {
@@ -671,7 +678,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (!validateBackupPassphrase(passphrase)) return false
         val blob = AccountBackupFiles.read(getApplication(), uri)
         if (blob == null) {
-            _uiState.update { it.copy(error = appStr(R.string.error_account_backup_read)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_account_backup_read))
             return false
         }
         return beginAccountImport(blob, passphrase)
@@ -694,7 +701,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         it.copy(
             showRatchetBackupDialog = show,
             ratchetBackupPassphrase = if (show) it.ratchetBackupPassphrase else "",
-            error = if (show) null else it.error,
+            userError = if (show) null else it.userError,
         )
     }
 
@@ -706,7 +713,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun validateBackupPassphrase(pass: String): Boolean {
         if (pass.length < 8) {
-            _uiState.update { it.copy(error = appStr(R.string.error_backup_passphrase)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_backup_passphrase))
             return false
         }
         return true
@@ -748,7 +755,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
         } catch (e: Exception) {
             _uiState.update {
-                it.copy(error = appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)))
+                it.copy(
+                    userError = UserError(
+                        UserErrorKind.Generic,
+                        appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)),
+                    ),
+                )
             }
             false
         }
@@ -782,7 +794,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             AppSnackbarBus.show(appStr(R.string.snackbar_account_backup_restored))
         } catch (e: Exception) {
             _uiState.update {
-                it.copy(error = appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)))
+                it.copy(
+                    userError = UserError(
+                        UserErrorKind.Generic,
+                        appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)),
+                    ),
+                )
             }
         }
     }
@@ -822,7 +839,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 showOnboarding = true,
                 onboardingStep = initialOnboardingStep(),
-                error = null,
+                userError = null,
             )
         }
     }
@@ -833,7 +850,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             OnboardingStep.Identity -> OnboardingStep.AddContact
             OnboardingStep.AddContact -> return
         }
-        _uiState.update { it.copy(onboardingStep = next, error = null) }
+        _uiState.update { it.copy(onboardingStep = next, userError = null) }
     }
 
     fun finishOnboardingFromAddContact() {
@@ -869,7 +886,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val blob = buildRatchetExportBlob(passphrase) ?: return false
         val ok = RatchetBackupFiles.write(getApplication(), uri, blob)
         if (!ok) {
-            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_write)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_ratchet_write))
             return false
         }
         _uiState.update {
@@ -886,7 +903,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (!validateRatchetPassphrase(passphrase)) return false
         val blob = RatchetBackupFiles.read(getApplication(), uri)
         if (blob == null) {
-            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_read)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_ratchet_read))
             return false
         }
         return importRatchetBackup(blob)
@@ -911,7 +928,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val cm = getApplication<Application>().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val blob = cm.primaryClip?.getItemAt(0)?.text?.toString()?.trim().orEmpty()
         if (blob.isEmpty()) {
-            _uiState.update { it.copy(error = appStr(R.string.error_ratchet_clipboard_empty)) }
+            setUserError(UserErrorKind.Generic, appStr(R.string.error_ratchet_clipboard_empty))
             return false
         }
         return importRatchetBackup(blob)
@@ -933,7 +950,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             true
         } catch (e: Exception) {
             _uiState.update {
-                it.copy(error = appStr(R.string.error_ratchet_restore, e.message ?: appStr(R.string.error_unknown)))
+                it.copy(
+                    userError = UserError(
+                        UserErrorKind.Generic,
+                        appStr(R.string.error_ratchet_restore, e.message ?: appStr(R.string.error_unknown)),
+                    ),
+                )
             }
             false
         }
@@ -943,10 +965,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         try {
             val group = identityStore.rotateGroupKey(groupId)
             refreshGroups()
-            _uiState.update { it.copy(inviteGroup = group) }
-            AppSnackbarBus.show(appStr(R.string.snackbar_group_key_rotated))
+            _uiState.update { it.copy(inviteGroup = group, inviteHighlightRotation = true) }
         } catch (e: Exception) {
-            _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_rotate_key)) }
+            setUserError(UserErrorKind.Generic, e.message ?: appStr(R.string.error_rotate_key))
         }
     }
 
@@ -978,7 +999,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createGroupSession(group: ChatGroup): ChatSession? {
         if (group.isInviteExpired()) {
-            _uiState.update { it.copy(error = appStr(R.string.error_group_expired)) }
+            setUserError(UserErrorKind.GroupExpired)
             return null
         }
         val identity = _uiState.value.identity ?: return null
@@ -993,7 +1014,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private fun ensureServerReadyForChat(): Boolean {
         val url = resolveServerUrlForSession()
         if (url.isNotEmpty()) return true
-        _uiState.update { it.copy(error = appStr(R.string.error_server_required)) }
+        setUserError(UserErrorKind.ServerRequired)
         return false
     }
 
@@ -1012,7 +1033,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(serverUrl = relay) }
     }
 
-    fun clearError() = _uiState.update { it.copy(error = null) }
+    fun clearUserError() = _uiState.update { it.copy(userError = null) }
+
+    private fun setUserError(kind: UserErrorKind, detail: String? = null) {
+        _uiState.update { it.copy(userError = UserError(kind, detail)) }
+    }
+
+    fun showGroupInviteForRoom(roomId: String) {
+        _uiState.value.groups.find { it.roomId == roomId }?.let { showGroupInvite(it) }
+    }
 
     fun setUseDynamicColor(enabled: Boolean) {
         prefs.setUseDynamicColor(enabled)

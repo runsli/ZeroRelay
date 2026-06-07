@@ -380,9 +380,16 @@ private fun RelayServerBlock(
             ),
         )
     }
-    state.error?.let {
-        Spacer(Modifier.height(4.dp))
-        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    state.userError?.let { err ->
+        Spacer(Modifier.height(8.dp))
+        app.zerorelay.ui.components.UserErrorBanner(
+            error = err,
+            onDismiss = viewModel::clearUserError,
+            onAction = when (err.kind) {
+                app.zerorelay.ui.error.UserErrorKind.TlsChanged -> viewModel::trustPendingTlsPin
+                else -> null
+            },
+        )
     }
 }
 

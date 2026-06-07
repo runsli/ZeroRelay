@@ -44,6 +44,7 @@ fun ZeroRelayTopBar(
     onCopyRoomId: () -> Unit,
     onCopyServerUrl: () -> Unit,
     onRetry: (() -> Unit)?,
+    onInviteMembers: (() -> Unit)? = null,
     detailLine: String? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -121,6 +122,15 @@ fun ZeroRelayTopBar(
                 expanded = menuExpanded,
                 onDismissRequest = { menuExpanded = false },
             ) {
+                if (onInviteMembers != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.chat_menu_invite_members)) },
+                        onClick = {
+                            menuExpanded = false
+                            onInviteMembers()
+                        },
+                    )
+                }
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.chat_menu_copy_fingerprint)) },
                     onClick = {

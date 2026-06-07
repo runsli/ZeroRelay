@@ -1,7 +1,6 @@
 package app.zerorelay.data.chat
 
 import android.content.Context
-import androidx.annotation.StringRes
 import android.util.Base64
 import app.zerorelay.R
 import app.zerorelay.data.crypto.CryptoService
@@ -17,6 +16,8 @@ import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.data.model.EncryptedMessage
+import app.zerorelay.ui.error.UserError
+import app.zerorelay.ui.error.UserErrorKind
 import app.zerorelay.data.network.RelayHttpClient
 import app.zerorelay.data.network.RelaySecurityPolicy
 import app.zerorelay.data.network.ServerUrl
@@ -87,11 +88,11 @@ class ChatRepository(
     private val _connection = MutableStateFlow(ConnectionState.Disconnected)
     val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
 
-    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 8)
-    val errors: SharedFlow<String> = _errors.asSharedFlow()
+    private val _errors = MutableSharedFlow<UserError>(extraBufferCapacity = 8)
+    val errors: SharedFlow<UserError> = _errors.asSharedFlow()
 
-    private fun emitError(@StringRes resId: Int, vararg formatArgs: Any) {
-        _errors.tryEmit(appContext.getString(resId, *formatArgs))
+    private fun emitError(kind: UserErrorKind, detail: String? = null) {
+        _errors.tryEmit(UserError(kind, detail))
     }
 
     private fun throwableDetail(e: Throwable): String =
@@ -116,7 +117,7 @@ class ChatRepository(
             startMessagePolling()
             true
         } catch (e: Exception) {
-            emitError(R.string.error_relay_connect_failed, throwableDetail(e))
+            emitError(UserErrorKind.ChatConnect, throwableDetail(e))
             false
         }
     }
@@ -161,7 +162,7 @@ class ChatRepository(
                 messageCipher.clearRoom(room)
             }
             if (RelaySecurityPolicy.ensureRelayReady(appContext, normalizedUrl) != null) {
-                emitError(R.string.error_release_tls_pin_required)
+                emitError(UserErrorKind.ReleaseTlsRequired)
                 return false
             }
             roomAccessToken = RelayCrypto.deriveRoomAccessToken(sessionKey, room)
@@ -178,7 +179,7 @@ class ChatRepository(
             startMessagePolling()
             true
         } catch (e: Exception) {
-            emitError(R.string.error_relay_connect_failed, throwableDetail(e))
+            emitError(UserErrorKind.ChatConnect, throwableDetail(e))
             false
         }
     }
@@ -328,11 +329,12 @@ class ChatRepository(
                             val detail = runCatching {
                                 JSONObject(errBody).optString("error")
                             }.getOrNull()?.takeIf { it.isNotBlank() } ?: errBody.take(80)
-                            if (detail.isNotBlank()) {
-                                emitError(R.string.error_relay_poll_failed_detail, response.code, detail)
+                            val pollDetail = if (detail.isNotBlank()) {
+                                "HTTP ${response.code}: $detail"
                             } else {
-                                emitError(R.string.error_relay_poll_failed_http, response.code)
+                                "HTTP ${response.code}"
                             }
+                            emitError(UserErrorKind.ChatConnect, pollDetail)
                             return@use
                         }
                         val body = response.body?.string().orEmpty()
@@ -353,7 +355,7 @@ class ChatRepository(
                         lastPollTimestamp = maxTs
                     }
                 } catch (e: Exception) {
-                    emitError(R.string.error_relay_poll_error, throwableDetail(e))
+                    emitError(UserErrorKind.ChatConnect, throwableDetail(e))
                 }
                 if (receivedMessages) {
                     pollBackoffMs = ProtocolPolicy.POLL_BASE_MS
@@ -411,7 +413,7 @@ class ChatRepository(
                     _connection.value = ConnectionState.Error
                     val detail = t.message?.takeIf { it.isNotBlank() }
                         ?: appContext.getString(R.string.error_unknown)
-                    emitError(R.string.error_relay_ws_error, detail)
+                    emitError(UserErrorKind.ChatConnect, detail)
                     scheduleWebSocketReconnect()
                 }
 
@@ -452,7 +454,7 @@ class ChatRepository(
                     _connection.value = ConnectionState.Error
                     val serverError = data.optString("error").takeIf { it.isNotBlank() }
                         ?: appContext.getString(R.string.error_unknown)
-                    emitError(R.string.error_relay_ws_auth_failed, serverError)
+                    emitError(UserErrorKind.WsAuthFailed, serverError)
                 }
                 "message" -> {
                     val msg = data.optJSONObject("message") ?: return
@@ -465,7 +467,10 @@ class ChatRepository(
                         val returned = data.optInt("returnedCount")
                         val total = data.optInt("totalCount")
                         if (total > returned) {
-                            emitError(R.string.error_relay_history_truncated, returned, total)
+                            emitError(
+                                UserErrorKind.Generic,
+                                appContext.getString(R.string.error_relay_history_truncated, returned, total),
+                            )
                         }
                     }
                 }
@@ -492,12 +497,12 @@ class ChatRepository(
         if (!seenMessageIds.add(dedupKey)) return
         if (consumePendingEcho(encrypted)) return
         if (!verifyIncomingSignature(encrypted)) {
-            emitError(R.string.error_relay_signature_rejected)
+            emitError(UserErrorKind.SignatureRejected)
             return
         }
         if (!emitDecrypted(encrypted, key)) {
             if (encrypted.senderId != senderId) {
-                emitError(R.string.error_relay_decrypt_failed)
+                emitError(UserErrorKind.DecryptFailed)
             }
         } else if (encrypted.timestamp > lastPollTimestamp) {
             lastPollTimestamp = encrypted.timestamp
@@ -560,7 +565,10 @@ class ChatRepository(
         } ?: return false
         if (legacyDecrypt && !legacyDecryptNotified) {
             legacyDecryptNotified = true
-            emitError(R.string.error_relay_legacy_decrypt, legacyCutoffLabel())
+            emitError(
+                UserErrorKind.Generic,
+                appContext.getString(R.string.error_relay_legacy_decrypt, legacyCutoffLabel()),
+            )
         }
         _messages.emit(
             ChatMessage(

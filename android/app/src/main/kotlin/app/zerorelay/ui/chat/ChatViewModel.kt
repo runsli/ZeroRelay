@@ -13,6 +13,8 @@ import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.data.model.DeliveryStatus
+import app.zerorelay.ui.error.UserError
+import app.zerorelay.ui.error.UserErrorKind
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +30,7 @@ data class ChatUiState(
     val senderId: String = "",
     val messages: List<ChatMessage> = emptyList(),
     val connection: ConnectionState = ConnectionState.Connecting,
-    val initError: String? = null,
+    val initError: UserError? = null,
     val peerNeedsVerification: Boolean = false,
     val peerFingerprint: String = "",
 )
@@ -143,7 +145,7 @@ class ChatViewModel(
             )
             _uiState.update {
                 it.copy(
-                    initError = if (!ok) appStr(R.string.error_chat_connect) else null,
+                    initError = if (!ok) UserError(UserErrorKind.ChatConnect) else null,
                     senderId = senderId,
                 )
             }
@@ -277,10 +279,12 @@ class ChatViewModel(
                 )
             }
             if (!ok) {
-                _uiState.update { it.copy(initError = appStr(R.string.error_chat_connect)) }
+                _uiState.update { it.copy(initError = UserError(UserErrorKind.ChatConnect)) }
             }
         }
     }
+
+    fun clearInitError() = _uiState.update { it.copy(initError = null) }
 
     fun refreshPeerVerification() {
         val session = boundSession ?: return

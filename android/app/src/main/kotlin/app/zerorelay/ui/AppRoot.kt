@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -25,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import app.zerorelay.ui.components.UserErrorBanner
+import app.zerorelay.ui.error.UserError
+import app.zerorelay.ui.error.UserErrorBus
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatSession
@@ -32,6 +37,7 @@ import app.zerorelay.data.model.Contact
 import app.zerorelay.ui.chat.ChatScreen
 import app.zerorelay.ui.safety.SafetyNumberScreen
 import app.zerorelay.ui.components.AdaptiveChatPlaceholder
+import app.zerorelay.ui.home.GroupInviteSheet
 import app.zerorelay.ui.home.HomeScreen
 import app.zerorelay.ui.home.HomeViewModel
 import app.zerorelay.ui.home.ScanHandleResult
@@ -75,9 +81,15 @@ fun AppRoot(
     ZeroRelayTheme(dynamicColor = homeState.useDynamicColor) {
         SyncSystemBarColors()
         val snackbarHost = remember { SnackbarHostState() }
+        var globalUserError by remember { mutableStateOf<UserError?>(null) }
         LaunchedEffect(Unit) {
             AppSnackbarBus.messages.collect { msg ->
                 snackbarHost.showSnackbar(msg)
+            }
+        }
+        LaunchedEffect(Unit) {
+            UserErrorBus.errors.collect { err ->
+                globalUserError = err
             }
         }
         Box(
@@ -191,6 +203,9 @@ fun AppRoot(
                                                     )
                                                 }
                                         },
+                                        onInviteMembers = {
+                                            homeViewModel.showGroupInviteForRoom(listDetailChat!!.roomId)
+                                        },
                                         allowScreenshots = homeState.allowScreenshots,
                                         modifier = Modifier
                                             .weight(0.58f)
@@ -251,6 +266,9 @@ fun AppRoot(
                                         )
                                     }
                             },
+                            onInviteMembers = {
+                                homeViewModel.showGroupInviteForRoom(current.session.roomId)
+                            },
                             allowScreenshots = homeState.allowScreenshots,
                         )
                     }
@@ -294,6 +312,31 @@ fun AppRoot(
                     onPasteInvite = { homeViewModel.openPasteDialog() },
                     onFinish = { },
                     modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            homeState.inviteGroup?.let { group ->
+                val payload = remember(group.id, homeState.serverUrl) {
+                    homeViewModel.groupInvitePayload(group)
+                }
+                GroupInviteSheet(
+                    group = group,
+                    payload = payload,
+                    serverUrl = homeState.serverUrl,
+                    highlightRotation = homeState.inviteHighlightRotation,
+                    onDismiss = homeViewModel::closeGroupInvite,
+                    onRotateKey = { homeViewModel.rotateGroupKey(group.id) },
+                )
+            }
+
+            globalUserError?.let { err ->
+                UserErrorBanner(
+                    error = err,
+                    onDismiss = { globalUserError = null },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
 

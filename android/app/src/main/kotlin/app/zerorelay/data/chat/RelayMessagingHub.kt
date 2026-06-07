@@ -15,7 +15,7 @@ import app.zerorelay.data.model.Identity
 import app.zerorelay.service.RelayForegroundService
 import app.zerorelay.ui.notification.ActiveChatTracker
 import app.zerorelay.ui.notification.MessageNotificationController
-import app.zerorelay.ui.snackbar.AppSnackbarBus
+import app.zerorelay.ui.error.UserErrorBus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -403,7 +403,7 @@ class RelayMessagingHub private constructor(context: Context) {
             .onEach { updateRoomConnection(roomId, it) }
             .launchIn(scope)
         repo.errors
-            .onEach { AppSnackbarBus.show(it) }
+            .onEach { UserErrorBus.show(it) }
             .launchIn(scope)
     }
 

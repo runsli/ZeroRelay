@@ -60,6 +60,7 @@ import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.ui.components.ChatMessageRow
 import app.zerorelay.ui.components.UserInputBar
+import app.zerorelay.ui.components.UserErrorBanner
 import app.zerorelay.ui.components.ZeroRelayTopBar
 import app.zerorelay.ui.components.buildMessageRows
 import app.zerorelay.ui.notification.ActiveChatTracker
@@ -72,6 +73,7 @@ fun ChatScreen(
     session: ChatSession,
     onLeave: () -> Unit,
     onOpenSafetyNumber: () -> Unit = {},
+    onInviteMembers: (() -> Unit)? = null,
     allowScreenshots: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -197,6 +199,7 @@ fun ChatScreen(
                     copyText("serverUrl", session.serverUrl, copiedServerMsg)
                 },
                 onRetry = if (state.connection != ConnectionState.Connected) vm::retry else null,
+                onInviteMembers = if (session.isGroup) onInviteMembers else null,
             )
         },
         bottomBar = {
@@ -254,21 +257,14 @@ fun ChatScreen(
                 exit = fadeOut(),
             ) {
                 state.initError?.let { error ->
-                    Surface(
+                    UserErrorBanner(
+                        error = error,
+                        onDismiss = vm::clearInitError,
+                        onAction = vm::retry,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        shape = MaterialTheme.shapes.medium,
-                    ) {
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                            textAlign = TextAlign.Center,
-                        )
-                    }
+                    )
                 }
             }
 

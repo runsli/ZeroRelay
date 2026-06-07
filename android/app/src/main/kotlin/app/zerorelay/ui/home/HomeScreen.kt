@@ -84,8 +84,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatGroup
-import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.model.ChatSession
+import app.zerorelay.ui.components.UserErrorBanner
+import app.zerorelay.ui.error.UserError
+import app.zerorelay.ui.error.UserErrorKind
 import app.zerorelay.ui.home.RelayStatusBarState
 import app.zerorelay.data.model.Contact
 import app.zerorelay.ui.safety.SafetyNumberFormat
@@ -188,78 +190,6 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = viewModel::closeMyQr) {
                     Text(stringResource(R.string.action_close))
-                }
-            },
-        )
-    }
-
-    state.inviteGroup?.let { group ->
-        val payload = remember(group.id, state.serverUrl) { viewModel.groupInvitePayload(group) }
-        val clipboard = LocalClipboardManager.current
-        val context = LocalContext.current
-        AlertDialog(
-            onDismissRequest = viewModel::closeGroupInvite,
-            title = { Text(stringResource(R.string.group_invite_title)) },
-            text = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = group.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    val bitmap = remember(payload) { generateQrBitmap(payload, 480) }
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.cd_qr_image),
-                        modifier = Modifier.size(240.dp),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = stringResource(R.string.group_invite_scan_hint, group.displayName),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (ServerUrl.isLocalDevUrl(state.serverUrl)) {
-                        Text(
-                            text = stringResource(R.string.group_invite_need_https),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.group_invite_server, state.serverUrl),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.group_invite_note),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            },
-            confirmButton = {
-                Row {
-                    TextButton(onClick = { viewModel.rotateGroupKey(group.id) }) {
-                        Text(stringResource(R.string.action_rotate_key))
-                    }
-                    TextButton(onClick = {
-                        clipboard.setText(AnnotatedString(payload))
-                    }) { Text(stringResource(R.string.action_copy_link)) }
-                    TextButton(onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, payload)
-                            }.let {
-                                Intent.createChooser(it, context.getString(R.string.share_group_invite_chooser))
-                            },
-                        )
-                    }) { Text(stringResource(R.string.action_share)) }
-                    TextButton(onClick = viewModel::closeGroupInvite) {
-                        Text(stringResource(R.string.action_close))
-                    }
                 }
             },
         )
@@ -571,11 +501,11 @@ private fun HomeMainList(
                 modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
             )
         }
-        state.error?.let {
-            Text(
-                it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall,
+        state.userError?.let { err ->
+            UserErrorBanner(
+                error = err,
+                onDismiss = viewModel::clearUserError,
+                onAction = homeUserErrorAction(err, onOpenSettings, viewModel),
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
@@ -1373,7 +1303,10 @@ private fun GroupRow(
                         Icon(Icons.Default.QrCode, contentDescription = stringResource(R.string.cd_group_invite_qr))
                     }
                     HomeListOverflowMenu(
-                        items = listOf(stringResource(R.string.home_menu_delete_group) to onDelete),
+                        items = listOf(
+                            stringResource(R.string.home_menu_invite_members) to onInvite,
+                            stringResource(R.string.home_menu_delete_group) to onDelete,
+                        ),
                         destructiveLast = true,
                     )
                 }
@@ -1421,4 +1354,23 @@ private fun DetachedConnectionBanner(
             }
         }
     }
+}
+
+private fun homeUserErrorAction(
+    error: UserError,
+    onOpenSettings: () -> Unit,
+    viewModel: HomeViewModel,
+): (() -> Unit)? = when (error.kind) {
+    UserErrorKind.ServerRequired,
+    UserErrorKind.ServerUnreachable,
+    UserErrorKind.ReleaseTlsRequired,
+    UserErrorKind.TlsChanged,
+    -> onOpenSettings
+    UserErrorKind.GroupExpired -> {
+        {
+            viewModel.selectTab(HomeTab.Groups)
+            viewModel.clearUserError()
+        }
+    }
+    else -> null
 }

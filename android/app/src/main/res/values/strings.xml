@@ -101,14 +101,21 @@
 
     <!-- Group invite -->
     <string name="group_invite_title">群聊邀请</string>
+    <string name="group_invite_success_title">群聊已创建</string>
     <string name="group_invite_scan_hint">扫码加入「%1$s」</string>
     <string name="group_invite_need_https">请先在设置中填写云端 https 地址再分享二维码</string>
     <string name="group_invite_server">已包含服务器：%1$s</string>
     <string name="group_invite_note">对方需扫码或粘贴邀请链接才会加入（不会自动进群）</string>
+    <string name="group_invite_share_primary">分享邀请</string>
+    <string name="group_invite_copy_secondary">复制邀请链接</string>
+    <string name="group_invite_rotation_prompt">群密钥已轮换，请立即分享下方新二维码，旧邀请已失效。</string>
     <string name="action_rotate_key">轮换密钥</string>
     <string name="action_copy_link">复制链接</string>
     <string name="action_share">分享</string>
+    <string name="action_dismiss">关闭</string>
     <string name="share_group_invite_chooser">分享群邀请</string>
+    <string name="home_menu_invite_members">邀请成员</string>
+    <string name="chat_menu_invite_members">邀请成员</string>
 
     <!-- Create group -->
     <string name="create_group_title">创建群聊</string>
@@ -306,4 +313,40 @@
     <string name="error_relay_signature_rejected">已丢弃未通过签名校验的消息</string>
     <string name="error_relay_decrypt_failed">无法解密对方消息（棘轮状态可能不同步，可尝试重新进入聊天）</string>
     <string name="error_relay_legacy_decrypt">部分消息使用旧版兼容解密（%1$s 后不再支持）</string>
+
+    <!-- User-facing errors (humanized) -->
+    <string name="user_error_show_details">查看技术详情</string>
+    <string name="user_error_try_action">去处理</string>
+    <string name="user_error_generic_title">出了点问题</string>
+    <string name="user_error_parse_invite_title">无法识别邀请内容</string>
+    <string name="user_error_parse_invite_action">请确认粘贴的是联系人公钥或群聊邀请链接，且内容完整未截断。</string>
+    <string name="user_error_parse_invite_detail">邀请格式不符合 ZeroRelay 联系人或群聊规范。</string>
+    <string name="user_error_scan_unrecognized_title">二维码无法识别</string>
+    <string name="user_error_scan_unrecognized_action">请扫描 ZeroRelay 联系人或群聊邀请码，或改用手动粘贴邀请。</string>
+    <string name="user_error_tls_changed_title">服务器证书已变更</string>
+    <string name="user_error_tls_changed_action">仅在确认服务器已正当轮换证书后，在设置中信任新指纹。</string>
+    <string name="user_error_server_unreachable_title">无法连接中继服务器</string>
+    <string name="user_error_server_unreachable_action">检查地址是否正确、网络是否可用，然后重试连接测试。</string>
+    <string name="user_error_server_required_title">尚未配置中继服务器</string>
+    <string name="user_error_server_required_action">在设置中填写 HTTPS 中继地址并测试连接。</string>
+    <string name="user_error_release_tls_title">需要先信任服务器证书</string>
+    <string name="user_error_release_tls_action">在设置中保存并测试连接，确认 TLS 证书指纹后再聊天。</string>
+    <string name="user_error_decrypt_failed_title">无法解密对方消息</string>
+    <string name="user_error_decrypt_failed_action">尝试退出并重新进入聊天；若仍失败，请与对方核对安全码或恢复备份。</string>
+    <string name="user_error_join_group_title">加入群聊失败</string>
+    <string name="user_error_join_group_action">请向群主索取最新邀请二维码，或确认你使用的中继地址与群主一致。</string>
+    <string name="user_error_chat_connect_title">无法连接聊天</string>
+    <string name="user_error_chat_connect_action">检查中继服务器地址与网络，然后点击重连。</string>
+    <string name="user_error_signature_title">已丢弃无法验证的消息</string>
+    <string name="user_error_signature_action">若持续出现，请与对方确认使用的是同一中继，并核对安全码。</string>
+    <string name="user_error_ws_auth_title">连接鉴权失败</string>
+    <string name="user_error_ws_auth_action">请重新进入聊天；若问题仍在，检查服务器地址与群邀请是否过期。</string>
+    <string name="user_error_add_contact_title">添加联系人失败</string>
+    <string name="user_error_add_contact_action">请确认邀请来自对方最新二维码，且双方使用同一中继服务器。</string>
+    <string name="user_error_create_group_title">创建群聊失败</string>
+    <string name="user_error_create_group_action">请稍后重试；若持续失败，检查是否已配置中继服务器。</string>
+    <string name="user_error_group_expired_title">群邀请已过期</string>
+    <string name="user_error_group_expired_action">在群聊列表中轮换密钥，并分享新的邀请二维码。</string>
+    <string name="user_error_not_ready_title">应用尚未就绪</string>
+    <string name="user_error_not_ready_action">请完成身份初始化后再试。</string>
 </resources>
