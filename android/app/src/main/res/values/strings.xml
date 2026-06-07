@@ -19,6 +19,39 @@
     <string name="cd_reconnect">重连</string>
     <string name="cd_empty_chat">暂无消息</string>
 
+    <!-- Onboarding -->
+    <string name="onboarding_title">开始使用</string>
+    <string name="onboarding_skip">跳过</string>
+    <string name="onboarding_next">下一步</string>
+    <string name="onboarding_step_server_title">连接中继服务器</string>
+    <string name="onboarding_step_server_body">填写你或朋友部署的 HTTPS 中继地址。双方须使用同一 relay 才能互通。</string>
+    <string name="onboarding_step_identity_title">分享你的身份</string>
+    <string name="onboarding_step_identity_body">让对方扫描此二维码或粘贴你的公钥，仅需一次。</string>
+    <string name="onboarding_step_contact_title">添加第一位联系人</string>
+    <string name="onboarding_step_contact_body">扫描对方的二维码，或粘贴对方发来的邀请。也可稍后在首页添加。</string>
+    <string name="onboarding_skip_add_contact">稍后再添加</string>
+    <string name="setup_continue_banner_title">设置尚未完成</string>
+    <string name="setup_continue_banner_body">配置中继服务器并添加联系人后即可开始加密聊天。</string>
+    <string name="setup_continue_banner_action">继续设置</string>
+    <string name="empty_action_add_contact">添加联系人</string>
+    <string name="empty_action_show_my_qr">出示我的二维码</string>
+    <string name="empty_action_scan_qr">扫描二维码</string>
+    <string name="empty_action_paste_invite">粘贴邀请</string>
+    <string name="empty_action_create_group">创建群聊</string>
+    <string name="empty_action_configure_relay">配置中继服务器</string>
+    <string name="home_empty_server_required_title">尚未配置中继</string>
+    <string name="home_empty_server_required_subtitle">请先填写并测试你的 HTTPS 中继地址，再添加联系人开始聊天。</string>
+
+    <!-- Relay status bar -->
+    <string name="relay_status_not_configured">未配置中继服务器</string>
+    <string name="relay_status_checking">测试中…</string>
+    <string name="relay_status_online">已连接 · %1$s</string>
+    <string name="relay_status_connecting">连接中…</string>
+    <string name="relay_status_disconnected">已断开 · %1$s</string>
+    <string name="relay_status_error">连接错误 · %1$s</string>
+    <string name="relay_status_action_configure">去配置</string>
+    <string name="relay_status_action_retry">重试</string>
+
     <!-- Home -->
     <string name="home_tab_conversations">会话</string>
     <string name="home_tab_contacts">联系人</string>
@@ -102,6 +135,9 @@
     <string name="settings_test_connection">保存并测试连接</string>
     <string name="settings_testing">测试中…</string>
     <string name="settings_connections">连接</string>
+    <string name="settings_connections_background">连接与后台</string>
+    <string name="settings_advanced">高级选项</string>
+    <string name="settings_advanced_summary">后台会话上限、棘轮备份、清除本地消息</string>
     <string name="settings_keep_alive_title">后台保持加密连接</string>
     <string name="settings_keep_alive_summary">返回聊天列表后显示常驻通知以维持 relay 连接；不含消息正文</string>
     <string name="settings_keep_alive_disabled_hint">已关闭后台保活；连接仍保留，但系统可能更快结束进程</string>

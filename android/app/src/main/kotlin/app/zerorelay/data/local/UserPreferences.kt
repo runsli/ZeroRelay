@@ -46,9 +46,24 @@ class UserPreferences(context: Context) {
         }
     }
 
+    fun isServerTested(): Boolean = prefs.getBoolean(KEY_SERVER_TESTED, false)
+
+    fun setServerTested(tested: Boolean) {
+        prefs.edit { putBoolean(KEY_SERVER_TESTED, tested) }
+    }
+
+    /** User skipped or finished the first-run wizard. */
+    fun isOnboardingDismissed(): Boolean = prefs.getBoolean(KEY_ONBOARDING_DISMISSED, false)
+
+    fun setOnboardingDismissed(dismissed: Boolean) {
+        prefs.edit { putBoolean(KEY_ONBOARDING_DISMISSED, dismissed) }
+    }
+
     companion object {
         private const val PREFS_NAME = "zero_relay_prefs"
         private const val KEY_SERVER_URL = "server_url"
+        private const val KEY_SERVER_TESTED = "server_tested"
+        private const val KEY_ONBOARDING_DISMISSED = "onboarding_dismissed"
         private const val KEY_USE_DYNAMIC_COLOR = "use_dynamic_color"
         private const val KEY_ALLOW_SCREENSHOTS = "allow_screenshots"
         private const val KEY_KEEP_ALIVE = "keep_alive_in_background"

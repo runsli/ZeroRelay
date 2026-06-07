@@ -35,6 +35,7 @@ import app.zerorelay.ui.home.HomeViewModel
 import app.zerorelay.ui.home.ScanHandleResult
 import app.zerorelay.ui.home.ScanQrScreen
 import app.zerorelay.ui.insets.SyncSystemBarColors
+import app.zerorelay.ui.onboarding.OnboardingScreen
 import app.zerorelay.ui.settings.SettingsScreen
 import app.zerorelay.ui.theme.ZeroRelayTheme
 import app.zerorelay.ui.util.rememberAppWidthClass
@@ -166,6 +167,17 @@ fun AppRoot(
                         )
                     }
                 }
+            }
+
+            if (homeState.showOnboarding) {
+                OnboardingScreen(
+                    state = homeState,
+                    viewModel = homeViewModel,
+                    onScanQr = { screen = RootScreen.ScanQr },
+                    onPasteInvite = { homeViewModel.openPasteDialog() },
+                    onFinish = { },
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
 
             SnackbarHost(

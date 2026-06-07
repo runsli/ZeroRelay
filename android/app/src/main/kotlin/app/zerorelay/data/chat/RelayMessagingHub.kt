@@ -99,6 +99,7 @@ class RelayMessagingHub private constructor(context: Context) {
         persistDetachedSessions()
         syncForegroundService()
         refreshActiveConnection()
+        publishAggregatedDetachedConnection()
     }
 
     /** 返回首页：当前会话转入 detached，超出 K 时淘汰最久未用的 detached 房间。 */
@@ -119,6 +120,7 @@ class RelayMessagingHub private constructor(context: Context) {
         persistDetachedSessions()
         syncForegroundService()
         _connection.value = ConnectionState.Disconnected
+        publishAggregatedDetachedConnection()
     }
 
     fun restoreDetachedSession(session: ChatSession) {
@@ -131,6 +133,7 @@ class RelayMessagingHub private constructor(context: Context) {
         }
         activeSession = null
         trimDetachedToCap()
+        publishAggregatedDetachedConnection()
     }
 
     /** 断开指定房间并移除会话引用。 */
@@ -146,6 +149,7 @@ class RelayMessagingHub private constructor(context: Context) {
         persistDetachedSessions()
         syncForegroundService()
         refreshActiveConnection()
+        publishAggregatedDetachedConnection()
     }
 
     /** 用户明确离开当前前台聊天（兼容旧 API）。 */
@@ -165,11 +169,21 @@ class RelayMessagingHub private constructor(context: Context) {
     fun connectionFor(roomId: String): StateFlow<ConnectionState> =
         roomConnections.getOrPut(roomId) { MutableStateFlow(ConnectionState.Disconnected) }
 
+    private val _aggregatedDetachedConnection =
+        MutableStateFlow(ConnectionState.Disconnected)
+    val aggregatedDetachedConnectionFlow: StateFlow<ConnectionState> =
+        _aggregatedDetachedConnection.asStateFlow()
+
     internal fun updateRoomConnection(roomId: String, state: ConnectionState) {
         connectionFor(roomId).value = state
         if (activeSession?.roomId == roomId) {
             _connection.value = state
         }
+        publishAggregatedDetachedConnection()
+    }
+
+    private fun publishAggregatedDetachedConnection() {
+        _aggregatedDetachedConnection.value = aggregatedDetachedConnection()
     }
 
     fun aggregatedDetachedConnection(): ConnectionState {

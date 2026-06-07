@@ -49,6 +49,21 @@ enum class HomeTab {
     Groups,
 }
 
+enum class OnboardingStep {
+    Server,
+    Identity,
+    AddContact,
+}
+
+enum class RelayStatusBarState {
+    NotConfigured,
+    Checking,
+    Online,
+    Connecting,
+    Disconnected,
+    Error,
+}
+
 sealed class ScanHandleResult {
     data object ContactAdded : ScanHandleResult()
     data class GroupJoined(val session: ChatSession) : ScanHandleResult()
@@ -62,7 +77,7 @@ sealed class PasteResult {
 }
 
 data class HomeUiState(
-    val serverUrl: String = ServerUrl.EMULATOR_DEFAULT,
+    val serverUrl: String = "",
     val identity: Identity? = null,
     val contacts: List<Contact> = emptyList(),
     val groups: List<ChatGroup> = emptyList(),
@@ -103,6 +118,14 @@ data class HomeUiState(
     val detachedConnection: ConnectionState = ConnectionState.Disconnected,
     val maxBackgroundSessions: Int = 3,
     val batteryOptimizationIgnored: Boolean = true,
+    val showOnboarding: Boolean = false,
+    val onboardingStep: OnboardingStep = OnboardingStep.Server,
+    val serverConfigured: Boolean = false,
+    val serverTested: Boolean = false,
+    val setupIncomplete: Boolean = true,
+    val showSetupContinueBanner: Boolean = false,
+    val relayStatusBar: RelayStatusBarState = RelayStatusBarState.NotConfigured,
+    val relayHostLabel: String = "",
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -112,6 +135,65 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun appStr(@StringRes resId: Int, vararg args: Any): String =
         getApplication<Application>().getString(resId, *args)
+
+    private fun isSetupIncomplete(contacts: List<Contact>): Boolean {
+        val configured = !prefs.getServerUrl().isNullOrBlank()
+        val tested = prefs.isServerTested()
+        return !configured || !tested || contacts.isEmpty()
+    }
+
+    private fun initialOnboardingStep(): OnboardingStep = when {
+        !prefs.isServerTested() -> OnboardingStep.Server
+        else -> OnboardingStep.AddContact
+    }
+
+    private fun relayHostLabel(url: String): String {
+        if (url.isBlank()) return ""
+        return try {
+            Uri.parse(ServerUrl.normalize(url)).host?.takeIf { it.isNotBlank() } ?: url
+        } catch (_: Exception) {
+            url
+        }
+    }
+
+    private fun computeRelayStatusBar(state: HomeUiState): Pair<RelayStatusBarState, String> {
+        if (!state.serverConfigured || !state.serverTested) {
+            return RelayStatusBarState.NotConfigured to ""
+        }
+        if (state.serverChecking) {
+            return RelayStatusBarState.Checking to relayHostLabel(state.serverUrl)
+        }
+        val host = relayHostLabel(state.serverUrl)
+        if (state.detachedSessionCount > 0) {
+            return when (state.detachedConnection) {
+                ConnectionState.Connected -> RelayStatusBarState.Online to host
+                ConnectionState.Connecting -> RelayStatusBarState.Connecting to host
+                ConnectionState.Error -> RelayStatusBarState.Error to host
+                ConnectionState.Disconnected -> RelayStatusBarState.Disconnected to host
+            }
+        }
+        return when (state.serverCheckOk) {
+            false -> RelayStatusBarState.Error to host
+            else -> RelayStatusBarState.Online to host
+        }
+    }
+
+    private fun withSetupFlags(state: HomeUiState): HomeUiState {
+        val configured = !prefs.getServerUrl().isNullOrBlank()
+        val tested = prefs.isServerTested()
+        val incomplete = isSetupIncomplete(state.contacts)
+        val (relayBar, host) = computeRelayStatusBar(
+            state.copy(serverConfigured = configured, serverTested = tested),
+        )
+        return state.copy(
+            serverConfigured = configured,
+            serverTested = tested,
+            setupIncomplete = incomplete,
+            showSetupContinueBanner = prefs.isOnboardingDismissed() && incomplete,
+            relayStatusBar = relayBar,
+            relayHostLabel = host,
+        )
+    }
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -133,35 +215,50 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
-            val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
+            val server = prefs.getServerUrl().orEmpty()
+            val contacts = identityStore.getContacts()
             val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
+            val showOnboarding = !prefs.isOnboardingDismissed() && isSetupIncomplete(contacts)
             _uiState.update {
-                it.copy(
-                    identity = identity,
-                    serverUrl = server,
-                    contacts = identityStore.getContacts(),
-                    groups = identityStore.getGroups(),
-                    myQrPayload = qr,
-                    useDynamicColor = prefs.getUseDynamicColor(),
-                    allowScreenshots = prefs.getAllowScreenshots(),
-                    keepAliveInBackground = prefs.getKeepAliveInBackground(),
-                    maxBackgroundSessions = prefs.getMaxBackgroundSessions(),
-                    tlsPinned = RelayHttpClient.hasPin(getApplication(), server),
-                    batteryOptimizationIgnored = BatteryOptimizationHelper.isIgnoringOptimizations(application),
+                withSetupFlags(
+                    it.copy(
+                        identity = identity,
+                        serverUrl = server,
+                        contacts = contacts,
+                        groups = identityStore.getGroups(),
+                        myQrPayload = qr,
+                        useDynamicColor = prefs.getUseDynamicColor(),
+                        allowScreenshots = prefs.getAllowScreenshots(),
+                        keepAliveInBackground = prefs.getKeepAliveInBackground(),
+                        maxBackgroundSessions = prefs.getMaxBackgroundSessions(),
+                        tlsPinned = server.isNotBlank() && RelayHttpClient.hasPin(getApplication(), server),
+                        batteryOptimizationIgnored = BatteryOptimizationHelper.isIgnoringOptimizations(application),
+                        showOnboarding = showOnboarding,
+                        onboardingStep = if (showOnboarding) initialOnboardingStep() else OnboardingStep.Server,
+                        serverCheckOk = if (prefs.isServerTested()) true else null,
+                    ),
                 )
             }
             restoreDetachedSessionsIfNeeded(identity)
-            refreshDetachedListeningStatus()
+            refreshHomeConnectionUi()
         }
         viewModelScope.launch {
             hub.detachedSessionsFlow.collect {
-                refreshDetachedListeningStatus()
+                refreshHomeConnectionUi()
+            }
+        }
+        viewModelScope.launch {
+            hub.aggregatedDetachedConnectionFlow.collect {
+                refreshHomeConnectionUi()
             }
         }
     }
 
     fun onServerUrlChange(value: String) = _uiState.update {
-        it.copy(serverUrl = value, error = null, serverCheckOk = null)
+        if (value.trim() != it.serverUrl.trim()) {
+            prefs.setServerTested(false)
+        }
+        withSetupFlags(it.copy(serverUrl = value, error = null, serverCheckOk = null))
     }
 
     fun selectTab(tab: HomeTab) = _uiState.update { it.copy(selectedTab = tab, error = null) }
@@ -187,14 +284,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             ServerHealth.check(getApplication(), raw)
                 .onSuccess { result ->
                     prefs.setServerUrl(result.normalizedUrl)
+                    prefs.setServerTested(true)
                     _uiState.update {
-                        it.copy(
-                            serverUrl = result.normalizedUrl,
-                            serverChecking = false,
-                            serverCheckOk = true,
-                            error = null,
-                            pendingTlsPin = null,
-                            tlsPinned = RelayHttpClient.hasPin(getApplication(), result.normalizedUrl),
+                        withSetupFlags(
+                            it.copy(
+                                serverUrl = result.normalizedUrl,
+                                serverChecking = false,
+                                serverCheckOk = true,
+                                error = null,
+                                pendingTlsPin = null,
+                                tlsPinned = RelayHttpClient.hasPin(getApplication(), result.normalizedUrl),
+                            ),
                         )
                     }
                     AppSnackbarBus.show(
@@ -237,12 +337,15 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     fun refreshContacts() {
         _uiState.update { state ->
             val contacts = identityStore.getContacts()
-            state.copy(
-                contacts = contacts,
-                error = null,
-                conversations = mapConversationRows(contacts, state.groups),
+            withSetupFlags(
+                state.copy(
+                    contacts = contacts,
+                    error = null,
+                    conversations = mapConversationRows(contacts, state.groups),
+                ),
             )
         }
+        maybeFinishOnboardingAfterContact()
     }
 
     fun refreshGroups() {
@@ -442,12 +545,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val pin = _uiState.value.pendingTlsPin ?: return
         val url = _uiState.value.serverUrl
         RelayHttpClient.trustNewPin(getApplication(), url, pin)
+        prefs.setServerTested(true)
+        prefs.setServerUrl(ServerUrl.normalize(url))
         _uiState.update {
-            it.copy(
-                pendingTlsPin = null,
-                tlsPinned = true,
-                serverCheckOk = true,
-                error = null,
+            withSetupFlags(
+                it.copy(
+                    pendingTlsPin = null,
+                    tlsPinned = true,
+                    serverCheckOk = true,
+                    error = null,
+                ),
             )
         }
         AppSnackbarBus.show(appStr(R.string.snackbar_tls_trusted))
@@ -581,10 +688,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             payload.optString("serverUrl").takeIf { it.isNotBlank() }?.let { url ->
                 val normalized = ServerUrl.normalize(url)
                 prefs.setServerUrl(normalized)
+                prefs.setServerTested(true)
                 _uiState.update { it.copy(serverUrl = normalized) }
             }
             if (payload.has("tlsPins")) {
                 TlsPinStore.importAll(getApplication(), payload.getJSONObject("tlsPins"))
+            }
+            if (!isSetupIncomplete(identityStore.getContacts())) {
+                prefs.setOnboardingDismissed(true)
             }
             reloadAccountUi()
             _uiState.update {
@@ -604,18 +715,71 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun reloadAccountUi() {
         val identity = identityStore.getOrCreateIdentity()
-        val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
+        val server = prefs.getServerUrl().orEmpty()
+        val contacts = identityStore.getContacts()
         val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
         _uiState.update {
-            it.copy(
-                identity = identity,
-                serverUrl = server,
-                contacts = identityStore.getContacts(),
-                groups = identityStore.getGroups(),
-                myQrPayload = qr,
-                conversations = mapConversationRows(identityStore.getContacts(), identityStore.getGroups()),
+            withSetupFlags(
+                it.copy(
+                    identity = identity,
+                    serverUrl = server,
+                    contacts = contacts,
+                    groups = identityStore.getGroups(),
+                    myQrPayload = qr,
+                    conversations = mapConversationRows(contacts, identityStore.getGroups()),
+                    serverCheckOk = if (prefs.isServerTested()) true else null,
+                ),
             )
         }
+    }
+
+    fun skipOnboarding() {
+        prefs.setOnboardingDismissed(true)
+        _uiState.update {
+            withSetupFlags(it.copy(showOnboarding = false))
+        }
+    }
+
+    fun reopenOnboarding() {
+        _uiState.update {
+            it.copy(
+                showOnboarding = true,
+                onboardingStep = initialOnboardingStep(),
+                error = null,
+            )
+        }
+    }
+
+    fun advanceOnboardingStep() {
+        val next = when (_uiState.value.onboardingStep) {
+            OnboardingStep.Server -> OnboardingStep.Identity
+            OnboardingStep.Identity -> OnboardingStep.AddContact
+            OnboardingStep.AddContact -> return
+        }
+        _uiState.update { it.copy(onboardingStep = next, error = null) }
+    }
+
+    fun finishOnboardingFromAddContact() {
+        prefs.setOnboardingDismissed(true)
+        _uiState.update {
+            withSetupFlags(it.copy(showOnboarding = false))
+        }
+    }
+
+    private fun maybeFinishOnboardingAfterContact() {
+        if (_uiState.value.showOnboarding && _uiState.value.contacts.isNotEmpty()) {
+            finishOnboardingFromAddContact()
+        } else if (_uiState.value.contacts.isNotEmpty()) {
+            _uiState.update { withSetupFlags(it) }
+        }
+    }
+
+    fun resolveServerUrlForSession(): String {
+        val saved = prefs.getServerUrl()?.takeIf { it.isNotBlank() }
+        if (saved != null) return ServerUrl.normalize(saved)
+        val draft = _uiState.value.serverUrl.takeIf { it.isNotBlank() }
+        if (draft != null) return ServerUrl.normalize(draft)
+        return ""
     }
 
     private fun buildRatchetExportBlob(pass: String): String? {
@@ -713,7 +877,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val hub = RelayMessagingHub.get(getApplication())
         hub.sessionForRoom(roomId)?.let { return it }
         val identity = _uiState.value.identity ?: return null
-        val server = _uiState.value.serverUrl
+        val server = resolveServerUrlForSession()
+        if (server.isEmpty()) return null
         for (contact in _uiState.value.contacts) {
             SessionFactory.create(server, identity, contact)
                 ?.takeIf { it.roomId == roomId }
@@ -729,8 +894,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun createSession(contact: Contact): ChatSession? {
         val identity = _uiState.value.identity ?: return null
+        if (!ensureServerReadyForChat()) return null
         saveServerUrl()
-        return SessionFactory.create(_uiState.value.serverUrl, identity, contact)
+        return SessionFactory.create(resolveServerUrlForSession(), identity, contact)
     }
 
     fun createGroupSession(group: ChatGroup): ChatSession? {
@@ -739,12 +905,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             return null
         }
         val identity = _uiState.value.identity ?: return null
+        if (!ensureServerReadyForChat()) return null
         saveServerUrl()
-        return SessionFactory.createForGroup(_uiState.value.serverUrl, identity, group)
+        return SessionFactory.createForGroup(resolveServerUrlForSession(), identity, group)
     }
 
     fun groupInvitePayload(group: ChatGroup): String =
-        GroupExchange.encodeInvite(group, _uiState.value.serverUrl)
+        GroupExchange.encodeInvite(group, resolveServerUrlForSession().ifBlank { _uiState.value.serverUrl })
+
+    private fun ensureServerReadyForChat(): Boolean {
+        val url = resolveServerUrlForSession()
+        if (url.isNotEmpty()) return true
+        _uiState.update { it.copy(error = appStr(R.string.error_server_required)) }
+        return false
+    }
 
     private fun joinGroupAndCreateSession(payload: GroupExchange.InvitePayload): ChatSession {
         applyServerFromInvite(payload.serverUrl)
@@ -807,21 +981,38 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         prefs.setMaxBackgroundSessions(count)
         hub.trimDetachedToCap()
         _uiState.update { it.copy(maxBackgroundSessions = prefs.getMaxBackgroundSessions()) }
-        refreshDetachedListeningStatus()
+        refreshHomeConnectionUi()
     }
 
-    private fun refreshDetachedListeningStatus() {
+    fun retryRelayStatusBar() {
+        viewModelScope.launch {
+            val detached = hub.detachedSessionsList
+            if (detached.isNotEmpty()) {
+                val identity = _uiState.value.identity ?: return@launch
+                for (session in detached) {
+                    joinChatSession(session, identity)
+                }
+                refreshHomeConnectionUi()
+            } else {
+                testServerConnection()
+            }
+        }
+    }
+
+    private fun refreshHomeConnectionUi() {
         val detached = hub.detachedSessionsList
         val count = detached.size
         _uiState.update {
-            it.copy(
-                detachedSessionCount = count,
-                detachedChatName = detached.singleOrNull()?.peerDisplayName,
-                detachedConnection = if (count > 0) {
-                    hub.aggregatedDetachedConnection()
-                } else {
-                    ConnectionState.Disconnected
-                },
+            withSetupFlags(
+                it.copy(
+                    detachedSessionCount = count,
+                    detachedChatName = detached.singleOrNull()?.peerDisplayName,
+                    detachedConnection = if (count > 0) {
+                        hub.aggregatedDetachedConnection()
+                    } else {
+                        ConnectionState.Disconnected
+                    },
+                ),
             )
         }
     }
@@ -860,7 +1051,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 AppSnackbarBus.show(appStr(R.string.error_restore_detached_session_partial))
             }
         }
-        refreshDetachedListeningStatus()
+        refreshHomeConnectionUi()
     }
 
     private fun sessionFromRecord(

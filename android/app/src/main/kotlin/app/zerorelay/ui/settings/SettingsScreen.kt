@@ -3,8 +3,13 @@ package app.zerorelay.ui.settings
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +18,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -53,6 +62,7 @@ fun SettingsScreen(
     var pendingAccountExportPassphrase by remember { mutableStateOf<String?>(null) }
     var pendingRatchetExportPassphrase by remember { mutableStateOf<String?>(null) }
     var showClearMessagesDialog by remember { mutableStateOf(false) }
+    var advancedExpanded by remember { mutableStateOf(false) }
 
     val batteryOptLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -96,6 +106,302 @@ fun SettingsScreen(
         }
     }
 
+    SettingsDialogs(
+        state = state,
+        viewModel = viewModel,
+        showClearMessagesDialog = showClearMessagesDialog,
+        onDismissClearMessages = { showClearMessagesDialog = false },
+        onConfirmClearMessages = {
+            showClearMessagesDialog = false
+            viewModel.clearAllLocalMessages()
+        },
+        pendingAccountExportPassphrase = pendingAccountExportPassphrase,
+        onPendingAccountExportPassphrase = { pendingAccountExportPassphrase = it },
+        exportAccountLauncher = exportAccountLauncher,
+        importAccountLauncher = importAccountLauncher,
+        pendingRatchetExportPassphrase = pendingRatchetExportPassphrase,
+        onPendingRatchetExportPassphrase = { pendingRatchetExportPassphrase = it },
+        exportRatchetLauncher = exportRatchetLauncher,
+        importRatchetLauncher = importRatchetLauncher,
+    )
+
+    Scaffold(
+        topBar = {
+            ZeroRelayAppBar(
+                title = stringResource(R.string.settings_title),
+                onNavigateBack = onBack,
+            )
+        },
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+        ) {
+            SettingsSection(R.string.settings_relay) {
+                RelayServerBlock(state, viewModel)
+            }
+
+            SettingsSection(R.string.settings_connections_background) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_keep_alive_title),
+                    subtitle = stringResource(R.string.settings_keep_alive_summary),
+                    checked = state.keepAliveInBackground,
+                    enabled = true,
+                    onCheckedChange = viewModel::setKeepAliveInBackground,
+                )
+                Spacer(Modifier.height(12.dp))
+                if (state.batteryOptimizationIgnored) {
+                    Text(
+                        stringResource(R.string.settings_battery_optimization_done),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                } else {
+                    Column {
+                        Text(
+                            stringResource(R.string.settings_battery_optimization_summary),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        TextButton(
+                            onClick = {
+                                val intent = BatteryOptimizationHelper.createRequestIntent(context)
+                                    ?: BatteryOptimizationHelper.createSettingsIntent()
+                                batteryOptLauncher.launch(intent)
+                            },
+                        ) {
+                            Text(stringResource(R.string.settings_battery_optimization_action))
+                        }
+                    }
+                }
+            }
+
+            SettingsSection(R.string.settings_appearance) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_dynamic_color),
+                    subtitle = stringResource(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            R.string.settings_dynamic_color_hint_s
+                        } else {
+                            R.string.settings_dynamic_color_hint_legacy
+                        },
+                    ),
+                    checked = state.useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                    enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
+                    onCheckedChange = viewModel::setUseDynamicColor,
+                )
+            }
+
+            SettingsSection(R.string.settings_privacy) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.settings_allow_screenshots),
+                    subtitle = stringResource(R.string.settings_allow_screenshots_hint),
+                    checked = state.allowScreenshots,
+                    enabled = true,
+                    onCheckedChange = viewModel::setAllowScreenshots,
+                )
+            }
+
+            SettingsSection(R.string.settings_security_backup, showDivider = true) {
+                Text(
+                    stringResource(R.string.settings_account_backup_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = { viewModel.showAccountBackup(true) }) {
+                    Text(stringResource(R.string.settings_account_backup))
+                }
+            }
+
+            SettingsAdvancedHeader(
+                expanded = advancedExpanded,
+                onToggle = { advancedExpanded = !advancedExpanded },
+            )
+            AnimatedVisibility(
+                visible = advancedExpanded,
+                enter = expandVertically(),
+                exit = shrinkVertically(),
+            ) {
+                Column {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.settings_max_background_sessions_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(
+                            R.string.settings_max_background_sessions_summary,
+                            state.maxBackgroundSessions,
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (count in 1..5) {
+                            TextButton(
+                                onClick = { viewModel.setMaxBackgroundSessions(count) },
+                                enabled = state.maxBackgroundSessions != count,
+                            ) {
+                                Text(stringResource(R.string.settings_max_background_sessions_value, count))
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(16.dp))
+                    TextButton(onClick = {
+                        viewModel.setRatchetAdvanced(false)
+                        viewModel.showRatchetBackup(true)
+                    }) {
+                        Text(stringResource(R.string.settings_ratchet_backup))
+                    }
+                    Text(
+                        stringResource(R.string.settings_ratchet_advanced_warning),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = {
+                        viewModel.setRatchetAdvanced(true)
+                        viewModel.showRatchetBackup(true)
+                    }) {
+                        Text(stringResource(R.string.ratchet_export_clipboard))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.settings_clear_messages_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = { showClearMessagesDialog = true }) {
+                        Text(stringResource(R.string.settings_clear_messages))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSection(
+    titleRes: Int,
+    showDivider: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Text(stringResource(titleRes), style = MaterialTheme.typography.titleMedium)
+    Spacer(Modifier.height(8.dp))
+    content()
+    if (showDivider) {
+        Spacer(Modifier.height(24.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun SettingsAdvancedHeader(
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.settings_advanced),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                stringResource(R.string.settings_advanced_summary),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Icon(
+            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RelayServerBlock(
+    state: app.zerorelay.ui.home.HomeUiState,
+    viewModel: HomeViewModel,
+) {
+    OutlinedTextField(
+        value = state.serverUrl,
+        onValueChange = viewModel::onServerUrlChange,
+        modifier = Modifier.fillMaxWidth(),
+        label = { Text(stringResource(R.string.settings_server_label)) },
+        placeholder = { Text(stringResource(R.string.settings_server_placeholder)) },
+        singleLine = true,
+        shape = InputFieldShape,
+        supportingText = when (state.serverCheckOk) {
+            true -> ({
+                Text(
+                    stringResource(R.string.settings_server_ok),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            })
+            false -> null
+            null -> null
+        },
+    )
+    if (state.tlsPinned) {
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.settings_tls_pinned),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+    Spacer(Modifier.height(8.dp))
+    TextButton(
+        onClick = {
+            viewModel.saveServerUrl()
+            viewModel.testServerConnection()
+        },
+        enabled = !state.serverChecking && state.serverUrl.isNotBlank(),
+    ) {
+        Text(
+            stringResource(
+                if (state.serverChecking) R.string.settings_testing else R.string.settings_test_connection,
+            ),
+        )
+    }
+    state.error?.let {
+        Spacer(Modifier.height(4.dp))
+        Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun SettingsDialogs(
+    state: app.zerorelay.ui.home.HomeUiState,
+    viewModel: HomeViewModel,
+    showClearMessagesDialog: Boolean,
+    onDismissClearMessages: () -> Unit,
+    onConfirmClearMessages: () -> Unit,
+    pendingAccountExportPassphrase: String?,
+    onPendingAccountExportPassphrase: (String?) -> Unit,
+    exportAccountLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
+    importAccountLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, android.net.Uri?>,
+    pendingRatchetExportPassphrase: String?,
+    onPendingRatchetExportPassphrase: (String?) -> Unit,
+    exportRatchetLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, android.net.Uri?>,
+    importRatchetLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Array<String>, android.net.Uri?>,
+) {
     state.pendingTlsPin?.let { newPin ->
         AlertDialog(
             onDismissRequest = viewModel::dismissPendingTlsPin,
@@ -161,7 +467,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (viewModel.prepareAccountExport()) {
-                        pendingAccountExportPassphrase = state.accountBackupPassphrase
+                        onPendingAccountExportPassphrase(state.accountBackupPassphrase)
                         exportAccountLauncher.launch(AccountBackupFiles.DEFAULT_FILENAME)
                     }
                 }) { Text(stringResource(R.string.account_backup_export_file)) }
@@ -215,7 +521,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = {
                     if (viewModel.prepareRatchetExport()) {
-                        pendingRatchetExportPassphrase = state.ratchetBackupPassphrase
+                        onPendingRatchetExportPassphrase(state.ratchetBackupPassphrase)
                         exportRatchetLauncher.launch(RatchetBackupFiles.DEFAULT_FILENAME)
                     }
                 }) { Text(stringResource(R.string.ratchet_export_file)) }
@@ -228,221 +534,18 @@ fun SettingsScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            ZeroRelayAppBar(
-                title = stringResource(R.string.settings_title),
-                onNavigateBack = onBack,
-            )
-        },
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp),
-        ) {
-            Text(stringResource(R.string.settings_appearance), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_dynamic_color),
-                subtitle = stringResource(
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        R.string.settings_dynamic_color_hint_s
-                    } else {
-                        R.string.settings_dynamic_color_hint_legacy
-                    },
-                ),
-                checked = state.useDynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-                enabled = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S,
-                onCheckedChange = viewModel::setUseDynamicColor,
-            )
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(24.dp))
-
-            Text(stringResource(R.string.settings_relay), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = state.serverUrl,
-                onValueChange = viewModel::onServerUrlChange,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text(stringResource(R.string.settings_server_label)) },
-                placeholder = { Text(stringResource(R.string.settings_server_placeholder)) },
-                singleLine = true,
-                shape = InputFieldShape,
-                supportingText = when (state.serverCheckOk) {
-                    true -> ({
-                        Text(
-                            stringResource(R.string.settings_server_ok),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    })
-                    false -> null
-                    null -> null
-                },
-            )
-            if (state.tlsPinned) {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    stringResource(R.string.settings_tls_pinned),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            TextButton(
-                onClick = {
-                    viewModel.saveServerUrl()
-                    viewModel.testServerConnection()
-                },
-                enabled = !state.serverChecking && state.serverUrl.isNotBlank(),
-            ) {
-                Text(
-                    stringResource(
-                        if (state.serverChecking) R.string.settings_testing else R.string.settings_test_connection,
-                    ),
-                )
-            }
-            state.error?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            }
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(24.dp))
-
-            Text(stringResource(R.string.settings_connections), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_keep_alive_title),
-                subtitle = stringResource(R.string.settings_keep_alive_summary),
-                checked = state.keepAliveInBackground,
-                enabled = true,
-                onCheckedChange = viewModel::setKeepAliveInBackground,
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                stringResource(R.string.settings_max_background_sessions_summary, state.maxBackgroundSessions),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (count in 1..5) {
-                    TextButton(
-                        onClick = { viewModel.setMaxBackgroundSessions(count) },
-                        enabled = state.maxBackgroundSessions != count,
-                    ) {
-                        Text(stringResource(R.string.settings_max_background_sessions_value, count))
-                    }
-                }
-            }
-            Spacer(Modifier.height(12.dp))
-            if (state.batteryOptimizationIgnored) {
-                Text(
-                    stringResource(R.string.settings_battery_optimization_done),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            } else {
-                Column {
-                    Text(
-                        stringResource(R.string.settings_battery_optimization_summary),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    TextButton(
-                        onClick = {
-                            val intent = BatteryOptimizationHelper.createRequestIntent(context)
-                                ?: BatteryOptimizationHelper.createSettingsIntent()
-                            batteryOptLauncher.launch(intent)
-                        },
-                    ) {
-                        Text(stringResource(R.string.settings_battery_optimization_action))
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(24.dp))
-
-            Text(stringResource(R.string.settings_privacy), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            SettingsSwitchRow(
-                title = stringResource(R.string.settings_allow_screenshots),
-                subtitle = stringResource(R.string.settings_allow_screenshots_hint),
-                checked = state.allowScreenshots,
-                enabled = true,
-                onCheckedChange = viewModel::setAllowScreenshots,
-            )
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(24.dp))
-
-            Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.settings_clear_messages_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { showClearMessagesDialog = true }) {
-                Text(stringResource(R.string.settings_clear_messages))
-            }
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(24.dp))
-
-            Text(stringResource(R.string.settings_security_backup), style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                stringResource(R.string.settings_account_backup_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { viewModel.showAccountBackup(true) }) {
-                Text(stringResource(R.string.settings_account_backup))
-            }
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = {
-                viewModel.setRatchetAdvanced(false)
-                viewModel.showRatchetBackup(true)
-            }) {
-                Text(stringResource(R.string.settings_ratchet_backup))
-            }
-            TextButton(onClick = { viewModel.setRatchetAdvanced(true); viewModel.showRatchetBackup(true) }) {
-                Text(stringResource(R.string.ratchet_export_clipboard))
-            }
-        }
-    }
-
     if (showClearMessagesDialog) {
         AlertDialog(
-            onDismissRequest = { showClearMessagesDialog = false },
+            onDismissRequest = onDismissClearMessages,
             title = { Text(stringResource(R.string.settings_clear_messages_confirm_title)) },
             text = { Text(stringResource(R.string.settings_clear_messages_confirm_body)) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showClearMessagesDialog = false
-                        viewModel.clearAllLocalMessages()
-                    },
-                ) {
+                TextButton(onClick = onConfirmClearMessages) {
                     Text(stringResource(R.string.action_clear))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showClearMessagesDialog = false }) {
+                TextButton(onClick = onDismissClearMessages) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },

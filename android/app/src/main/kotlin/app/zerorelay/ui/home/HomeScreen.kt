@@ -43,6 +43,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -80,7 +82,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.model.ChatSession
-import app.zerorelay.data.model.ConnectionState
+import app.zerorelay.ui.home.RelayStatusBarState
 import app.zerorelay.data.model.Contact
 import app.zerorelay.ui.theme.CardShape
 import app.zerorelay.ui.util.BatteryOptimizationHelper
@@ -501,6 +503,9 @@ fun HomeScreen(
                     onOpenConversation = { openConversation(it) },
                     onOpenChat = onOpenChat,
                     viewModel = viewModel,
+                    onScanQr = onScanQr,
+                    onOpenSettings = onOpenSettings,
+                    onShowAddSheet = { showAddSheet = true },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
@@ -515,6 +520,9 @@ fun HomeScreen(
                 onOpenConversation = { openConversation(it) },
                 onOpenChat = onOpenChat,
                 viewModel = viewModel,
+                onScanQr = onScanQr,
+                onOpenSettings = onOpenSettings,
+                onShowAddSheet = { showAddSheet = true },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
@@ -534,6 +542,9 @@ private fun HomeMainList(
     onOpenConversation: (ConversationRowUi) -> Unit,
     onOpenChat: (ChatSession) -> Unit,
     viewModel: HomeViewModel,
+    onScanQr: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onShowAddSheet: () -> Unit,
     modifier: Modifier = Modifier,
     showTitle: Boolean = false,
     showTabs: Boolean = false,
@@ -556,11 +567,29 @@ private fun HomeMainList(
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
+        RelayStatusBar(
+            status = state.relayStatusBar,
+            hostLabel = state.relayHostLabel,
+            onConfigure = {
+                if (state.showSetupContinueBanner) {
+                    viewModel.reopenOnboarding()
+                } else {
+                    onOpenSettings()
+                }
+            },
+            onRetry = viewModel::retryRelayStatusBar,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        if (state.showSetupContinueBanner) {
+            SetupContinueBanner(
+                onContinue = viewModel::reopenOnboarding,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+        }
         if (state.detachedSessionCount > 0) {
             DetachedConnectionBanner(
                 sessionCount = state.detachedSessionCount,
                 chatName = state.detachedChatName,
-                connection = state.detachedConnection,
                 showBatteryHint = !state.batteryOptimizationIgnored,
                 onOpenChat = {
                     if (state.detachedSessionCount == 1) {
@@ -599,13 +628,25 @@ private fun HomeMainList(
         when (state.selectedTab) {
             HomeTab.Conversations -> ConversationsTab(
                 conversations = state.conversations,
+                serverConfigured = state.serverConfigured && state.serverTested,
                 onOpenConversation = onOpenConversation,
+                onShowAddSheet = onShowAddSheet,
+                onShowMyQr = viewModel::openMyQr,
+                onConfigureRelay = {
+                    if (state.showSetupContinueBanner) {
+                        viewModel.reopenOnboarding()
+                    } else {
+                        onOpenSettings()
+                    }
+                },
             )
             HomeTab.Contacts -> ContactsTab(
                 contacts = state.contacts,
                 onOpenChat = { openContactChat(it) },
                 onDelete = viewModel::deleteContact,
                 onVerify = viewModel::markContactVerified,
+                onScanQr = onScanQr,
+                onPasteInvite = viewModel::openPasteDialog,
             )
             HomeTab.Groups -> GroupsTab(
                 groups = state.groups,
@@ -613,6 +654,7 @@ private fun HomeMainList(
                 onOpenChat = { viewModel.createGroupSession(it)?.let(onOpenChat) },
                 onDelete = viewModel::deleteGroup,
                 onShowInvite = viewModel::showGroupInvite,
+                onCreateGroup = viewModel::openCreateGroup,
             )
         }
     }
@@ -634,12 +676,27 @@ private fun HomeAddSheetItem(
 @Composable
 private fun ConversationsTab(
     conversations: List<ConversationRowUi>,
+    serverConfigured: Boolean,
     onOpenConversation: (ConversationRowUi) -> Unit,
+    onShowAddSheet: () -> Unit,
+    onShowMyQr: () -> Unit,
+    onConfigureRelay: () -> Unit,
 ) {
-    if (conversations.isEmpty()) {
+    if (!serverConfigured) {
+        EmptyHint(
+            title = stringResource(R.string.home_empty_server_required_title),
+            subtitle = stringResource(R.string.home_empty_server_required_subtitle),
+            primaryLabel = stringResource(R.string.empty_action_configure_relay),
+            onPrimary = onConfigureRelay,
+        )
+    } else if (conversations.isEmpty()) {
         EmptyHint(
             title = stringResource(R.string.home_empty_conversations_title),
             subtitle = stringResource(R.string.home_empty_conversations_subtitle),
+            primaryLabel = stringResource(R.string.empty_action_add_contact),
+            onPrimary = onShowAddSheet,
+            secondaryLabel = stringResource(R.string.empty_action_show_my_qr),
+            onSecondary = onShowMyQr,
         )
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -744,11 +801,17 @@ private fun ContactsTab(
     onOpenChat: (Contact) -> Unit,
     onDelete: (String) -> Unit,
     onVerify: (String) -> Unit,
+    onScanQr: () -> Unit,
+    onPasteInvite: () -> Unit,
 ) {
     if (contacts.isEmpty()) {
         EmptyHint(
             title = stringResource(R.string.home_empty_contacts_title),
             subtitle = stringResource(R.string.home_empty_contacts_subtitle),
+            primaryLabel = stringResource(R.string.empty_action_scan_qr),
+            onPrimary = onScanQr,
+            secondaryLabel = stringResource(R.string.empty_action_paste_invite),
+            onSecondary = onPasteInvite,
         )
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -771,11 +834,14 @@ private fun GroupsTab(
     onOpenChat: (ChatGroup) -> Unit,
     onDelete: (String) -> Unit,
     onShowInvite: (ChatGroup) -> Unit,
+    onCreateGroup: () -> Unit,
 ) {
     if (groups.isEmpty()) {
         EmptyHint(
             title = stringResource(R.string.home_empty_groups_title),
             subtitle = stringResource(R.string.home_empty_groups_subtitle),
+            primaryLabel = stringResource(R.string.empty_action_create_group),
+            onPrimary = onCreateGroup,
         )
     } else {
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -793,7 +859,14 @@ private fun GroupsTab(
 }
 
 @Composable
-private fun EmptyHint(title: String, subtitle: String) {
+private fun EmptyHint(
+    title: String,
+    subtitle: String,
+    primaryLabel: String? = null,
+    onPrimary: (() -> Unit)? = null,
+    secondaryLabel: String? = null,
+    onSecondary: (() -> Unit)? = null,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -806,7 +879,173 @@ private fun EmptyHint(title: String, subtitle: String) {
             subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
         )
+        if (primaryLabel != null && onPrimary != null) {
+            Spacer(Modifier.height(20.dp))
+            Button(onClick = onPrimary) {
+                Text(primaryLabel)
+            }
+        }
+        if (secondaryLabel != null && onSecondary != null) {
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onSecondary) {
+                Text(secondaryLabel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun RelayStatusBar(
+    status: RelayStatusBarState,
+    hostLabel: String,
+    onConfigure: () -> Unit,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val notConfigured = stringResource(R.string.relay_status_not_configured)
+    val checking = stringResource(R.string.relay_status_checking)
+    val online = stringResource(R.string.relay_status_online, hostLabel)
+    val connecting = stringResource(R.string.relay_status_connecting)
+    val disconnected = stringResource(R.string.relay_status_disconnected, hostLabel)
+    val error = stringResource(R.string.relay_status_error, hostLabel)
+    val configure = stringResource(R.string.relay_status_action_configure)
+    val retry = stringResource(R.string.relay_status_action_retry)
+
+    val label: String
+    val actionLabel: String?
+    val onAction: (() -> Unit)?
+    val containerColor: androidx.compose.ui.graphics.Color
+    val contentColor: androidx.compose.ui.graphics.Color
+    when (status) {
+        RelayStatusBarState.NotConfigured -> {
+            label = notConfigured
+            actionLabel = configure
+            onAction = onConfigure
+            containerColor = cs.errorContainer
+            contentColor = cs.onErrorContainer
+        }
+        RelayStatusBarState.Checking -> {
+            label = checking
+            actionLabel = null
+            onAction = null
+            containerColor = cs.surfaceContainerHigh
+            contentColor = cs.onSurfaceVariant
+        }
+        RelayStatusBarState.Online -> {
+            label = online
+            actionLabel = null
+            onAction = null
+            containerColor = cs.primaryContainer
+            contentColor = cs.onPrimaryContainer
+        }
+        RelayStatusBarState.Connecting -> {
+            label = connecting
+            actionLabel = null
+            onAction = null
+            containerColor = cs.surfaceContainerHigh
+            contentColor = cs.onSurfaceVariant
+        }
+        RelayStatusBarState.Disconnected -> {
+            label = disconnected
+            actionLabel = retry
+            onAction = onRetry
+            containerColor = cs.errorContainer
+            contentColor = cs.onErrorContainer
+        }
+        RelayStatusBarState.Error -> {
+            label = error
+            actionLabel = retry
+            onAction = onRetry
+            containerColor = cs.errorContainer
+            contentColor = cs.onErrorContainer
+        }
+    }
+    if (onAction != null) {
+        Surface(
+            modifier = modifier.fillMaxWidth(),
+            shape = CardShape,
+            color = containerColor,
+            onClick = onAction,
+        ) {
+            RelayStatusBarContent(label, actionLabel, contentColor, cs.primary)
+        }
+    } else {
+        Surface(
+            modifier = modifier.fillMaxWidth(),
+            shape = CardShape,
+            color = containerColor,
+        ) {
+            RelayStatusBarContent(label, actionLabel, contentColor, cs.primary)
+        }
+    }
+}
+
+@Composable
+private fun RelayStatusBarContent(
+    label: String,
+    actionLabel: String?,
+    contentColor: androidx.compose.ui.graphics.Color,
+    actionColor: androidx.compose.ui.graphics.Color,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (actionLabel != null) {
+            Text(
+                text = actionLabel,
+                style = MaterialTheme.typography.labelLarge,
+                color = actionColor,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SetupContinueBanner(
+    onContinue: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = CardShape,
+        color = cs.secondaryContainer,
+        onClick = onContinue,
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Text(
+                stringResource(R.string.setup_continue_banner_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = cs.onSecondaryContainer,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                stringResource(R.string.setup_continue_banner_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = cs.onSecondaryContainer,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.setup_continue_banner_action),
+                style = MaterialTheme.typography.labelLarge,
+                color = cs.primary,
+            )
+        }
     }
 }
 
@@ -977,19 +1216,12 @@ private fun GroupRow(
 private fun DetachedConnectionBanner(
     sessionCount: Int,
     chatName: String?,
-    connection: ConnectionState,
     showBatteryHint: Boolean,
     onOpenChat: () -> Unit,
     onBatterySettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
-    val statusText = when (connection) {
-        ConnectionState.Connected -> stringResource(R.string.chat_connection_connected)
-        ConnectionState.Connecting -> stringResource(R.string.chat_connection_connecting)
-        ConnectionState.Error -> stringResource(R.string.chat_connection_error)
-        ConnectionState.Disconnected -> stringResource(R.string.chat_connection_disconnected)
-    }
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = CardShape,
@@ -1008,11 +1240,6 @@ private fun DetachedConnectionBanner(
                         stringResource(R.string.home_detached_listening, chatName.orEmpty())
                     },
                     style = MaterialTheme.typography.titleSmall,
-                    color = cs.onSecondaryContainer,
-                )
-                Text(
-                    text = statusText,
-                    style = MaterialTheme.typography.bodySmall,
                     color = cs.onSecondaryContainer,
                 )
             }
