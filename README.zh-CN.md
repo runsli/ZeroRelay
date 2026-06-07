@@ -100,6 +100,8 @@ ZeroRelay/
 
 ## 维护者与贡献者
 
+开发与 CI 说明见 **[CONTRIBUTING.zh-CN.md](CONTRIBUTING.zh-CN.md)** · [English](CONTRIBUTING.md)。
+
 - **发布 Android 正式版：** 更新 `android/version.properties`，推送标签 `vX.Y.Z` → [docs/GITHUB_RELEASES.zh-CN.md](docs/GITHUB_RELEASES.zh-CN.md) · [English](docs/GITHUB_RELEASES.md)
 - **F-Droid / 可复现构建：** [docs/F-DROID.zh-CN.md](docs/F-DROID.zh-CN.md) · [English](docs/F-DROID.md)
 - **完整部署清单：** [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md) · [English](docs/DEPLOYMENT.md)

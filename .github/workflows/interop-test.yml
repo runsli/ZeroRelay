@@ -1,0 +1,73 @@
+# Protocol / CLI ↔ relay interoperability tests (local relay).
+name: Interop test
+
+on:
+  pull_request:
+    paths:
+      - 'cli*.js'
+      - 'scripts/interop-test.js'
+      - 'server/**'
+      - 'android/**/crypto/**'
+      - '.github/workflows/interop-test.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'cli*.js'
+      - 'scripts/interop-test.js'
+      - 'server/**'
+      - 'android/**/crypto/**'
+      - '.github/workflows/interop-test.yml'
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: interop-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  interop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify no signing keys in repository
+        run: bash scripts/verify-no-signing-in-repo.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Start local relay
+        working-directory: server
+        run: node server-local.js &
+
+      - name: Wait for relay
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8787/ | grep -q '"status":"ok"'; then
+              echo "Relay ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Relay failed to start within 30s"
+          exit 1
+
+      - name: Run interop tests
+        env:
+          ZERO_RELAY_SERVER: http://127.0.0.1:8787
+        run: npm run test:interop

@@ -100,6 +100,8 @@ ZeroRelay/
 
 ## For maintainers & contributors
 
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** · [中文](CONTRIBUTING.zh-CN.md) for interop tests, CI checks, and commit conventions.
+
 - **Publish Android release:** bump `android/version.properties`, push tag `vX.Y.Z` → [docs/GITHUB_RELEASES.md](docs/GITHUB_RELEASES.md) · [中文](docs/GITHUB_RELEASES.zh-CN.md)
 - **F-Droid / reproducible builds:** [docs/F-DROID.md](docs/F-DROID.md) · [中文](docs/F-DROID.zh-CN.md)
 - **Full deployment checklist:** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) · [中文](docs/DEPLOYMENT.zh-CN.md)
