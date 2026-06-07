@@ -298,7 +298,7 @@ private fun SettingsSection(
 ) {
     Text(stringResource(titleRes), style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.height(8.dp))
-    content()
+    Column { content() }
     if (showDivider) {
         Spacer(Modifier.height(24.dp))
         HorizontalDivider()
