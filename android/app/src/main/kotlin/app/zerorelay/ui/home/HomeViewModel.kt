@@ -17,6 +17,7 @@ import app.zerorelay.data.crypto.MessageCipher
 import app.zerorelay.data.crypto.RatchetBackup
 import app.zerorelay.data.crypto.RatchetBackupFiles
 import app.zerorelay.data.identity.IdentityStore
+import app.zerorelay.data.local.ConversationEntity
 import app.zerorelay.data.local.DetachedSessionStore
 import app.zerorelay.data.local.UserPreferences
 import app.zerorelay.data.model.ChatGroup
@@ -40,6 +41,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class HomeTab {
+    Conversations,
     Contacts,
     Groups,
 }
@@ -61,7 +63,8 @@ data class HomeUiState(
     val identity: Identity? = null,
     val contacts: List<Contact> = emptyList(),
     val groups: List<ChatGroup> = emptyList(),
-    val selectedTab: HomeTab = HomeTab.Contacts,
+    val selectedTab: HomeTab = HomeTab.Conversations,
+    val conversations: List<ConversationRowUi> = emptyList(),
     val myQrPayload: String = "",
     val error: String? = null,
     val showMyQr: Boolean = false,
@@ -86,9 +89,12 @@ data class HomeUiState(
     val allowScreenshots: Boolean = true,
     /** 返回首页后通过 Foreground Service 维持 relay 连接。 */
     val keepAliveInBackground: Boolean = true,
-    /** 后台 detached 会话名称；非 null 时在首页显示监听状态。 */
+    /** 后台 detached 会话数；大于 0 时在首页显示监听状态。 */
+    val detachedSessionCount: Int = 0,
+    /** 单个 detached 时显示名称；多个时为 null。 */
     val detachedChatName: String? = null,
     val detachedConnection: ConnectionState = ConnectionState.Disconnected,
+    val maxBackgroundSessions: Int = 3,
     val batteryOptimizationIgnored: Boolean = true,
 )
 
@@ -102,9 +108,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var conversationEntities: List<ConversationEntity> = emptyList()
 
     init {
         RelaySessionCoordinator.start(application)
+        viewModelScope.launch {
+            hub.backfillConversationsFromMessages()
+        }
+        viewModelScope.launch {
+            hub.conversationStore.observeAll().collect { entities ->
+                conversationEntities = entities
+                _uiState.update { state ->
+                    state.copy(conversations = mapConversationRows(state.contacts, state.groups))
+                }
+            }
+        }
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val server = prefs.getServerUrl() ?: ServerUrl.EMULATOR_DEFAULT
@@ -119,21 +137,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     useDynamicColor = prefs.getUseDynamicColor(),
                     allowScreenshots = prefs.getAllowScreenshots(),
                     keepAliveInBackground = prefs.getKeepAliveInBackground(),
+                    maxBackgroundSessions = prefs.getMaxBackgroundSessions(),
                     tlsPinned = RelayHttpClient.hasPin(getApplication(), server),
                     batteryOptimizationIgnored = BatteryOptimizationHelper.isIgnoringOptimizations(application),
                 )
             }
-            restoreDetachedSessionIfNeeded(identity)
+            restoreDetachedSessionsIfNeeded(identity)
             refreshDetachedListeningStatus()
         }
         viewModelScope.launch {
-            hub.detachedSessionFlow.collect {
+            hub.detachedSessionsFlow.collect {
                 refreshDetachedListeningStatus()
-            }
-        }
-        viewModelScope.launch {
-            hub.connection.collect { conn ->
-                refreshDetachedListeningStatus(conn)
             }
         }
     }
@@ -213,11 +227,40 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshContacts() {
-        _uiState.update { it.copy(contacts = identityStore.getContacts(), error = null) }
+        _uiState.update { state ->
+            val contacts = identityStore.getContacts()
+            state.copy(
+                contacts = contacts,
+                error = null,
+                conversations = mapConversationRows(contacts, state.groups),
+            )
+        }
     }
 
     fun refreshGroups() {
-        _uiState.update { it.copy(groups = identityStore.getGroups(), error = null) }
+        _uiState.update { state ->
+            val groups = identityStore.getGroups()
+            state.copy(
+                groups = groups,
+                error = null,
+                conversations = mapConversationRows(state.contacts, groups),
+            )
+        }
+    }
+
+    private fun mapConversationRows(
+        contacts: List<Contact>,
+        groups: List<ChatGroup>,
+    ): List<ConversationRowUi> =
+        conversationEntities.map { it.toRowUi(contacts, groups) }
+
+    fun openConversation(roomId: String): ChatSession? = findChatSessionForRoom(roomId)
+
+    fun contactForConversation(row: ConversationRowUi): Contact? {
+        if (row.isGroup) return null
+        return _uiState.value.contacts.find { contact ->
+            contact.id == conversationEntities.find { it.roomId == row.roomId }?.peerContactId
+        }
     }
 
     fun openMyQr() = _uiState.update { it.copy(showMyQr = true) }
@@ -516,9 +559,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun findChatSessionForRoom(roomId: String): ChatSession? {
         val hub = RelayMessagingHub.get(getApplication())
-        hub.listeningSession()
-            ?.takeIf { it.roomId == roomId }
-            ?.let { return it }
+        hub.sessionForRoom(roomId)?.let { return it }
         val identity = _uiState.value.identity ?: return null
         val server = _uiState.value.serverUrl
         for (contact in _uiState.value.contacts) {
@@ -579,13 +620,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(allowScreenshots = allow) }
     }
 
+    fun clearAllLocalMessages() {
+        viewModelScope.launch {
+            hub.clearAllPersistedMessages()
+            AppSnackbarBus.show(appStr(R.string.snackbar_messages_cleared))
+        }
+    }
+
     fun setKeepAliveInBackground(enabled: Boolean) {
         prefs.setKeepAliveInBackground(enabled)
         _uiState.update { it.copy(keepAliveInBackground = enabled) }
         val hub = RelayMessagingHub.get(getApplication())
         if (!enabled) {
             hub.syncForegroundService()
-            if (hub.detachedSession != null) {
+            if (hub.detachedSessionsList.isNotEmpty()) {
                 AppSnackbarBus.show(appStr(R.string.settings_keep_alive_disabled_hint))
             }
         } else {
@@ -603,36 +651,63 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun detachedSessionForChat(): ChatSession? = hub.detachedSession
 
-    private fun refreshDetachedListeningStatus(connection: ConnectionState = hub.connection.value) {
-        val detached = hub.detachedSession
+    fun setMaxBackgroundSessions(count: Int) {
+        prefs.setMaxBackgroundSessions(count)
+        hub.trimDetachedToCap()
+        _uiState.update { it.copy(maxBackgroundSessions = prefs.getMaxBackgroundSessions()) }
+        refreshDetachedListeningStatus()
+    }
+
+    private fun refreshDetachedListeningStatus() {
+        val detached = hub.detachedSessionsList
+        val count = detached.size
         _uiState.update {
             it.copy(
-                detachedChatName = detached?.peerDisplayName,
-                detachedConnection = if (detached != null) connection else ConnectionState.Disconnected,
+                detachedSessionCount = count,
+                detachedChatName = detached.singleOrNull()?.peerDisplayName,
+                detachedConnection = if (count > 0) {
+                    hub.aggregatedDetachedConnection()
+                } else {
+                    ConnectionState.Disconnected
+                },
             )
         }
     }
 
-    private suspend fun restoreDetachedSessionIfNeeded(identity: Identity) {
-        if (hub.listeningSession() != null) return
-        val record = DetachedSessionStore(getApplication()).load() ?: return
-        val session = sessionFromRecord(record, identity) ?: run {
+    private suspend fun restoreDetachedSessionsIfNeeded(identity: Identity) {
+        if (hub.activeSession != null) return
+        val records = DetachedSessionStore(getApplication()).loadAll()
+        if (records.isEmpty()) return
+        var failedAny = false
+        val restored = mutableListOf<ChatSession>()
+        for (record in records) {
+            val session = sessionFromRecord(record, identity)
+            if (session == null) {
+                failedAny = true
+                continue
+            }
+            val repo = hub.getOrCreateRepository(session.roomId)
+            if (!repo.isInRoom(session.roomId)) {
+                if (!joinChatSession(session, identity)) {
+                    hub.leaveRoom(session.roomId)
+                    failedAny = true
+                    continue
+                }
+            }
+            restored += session
+            hub.registerConversation(session)
+        }
+        if (restored.isEmpty()) {
             DetachedSessionStore(getApplication()).clear()
-            AppSnackbarBus.show(appStr(R.string.error_restore_detached_session))
-            return
+            if (failedAny) {
+                AppSnackbarBus.show(appStr(R.string.error_restore_detached_session_failed))
+            }
+        } else {
+            hub.restoreDetachedSessions(restored)
+            if (failedAny) {
+                AppSnackbarBus.show(appStr(R.string.error_restore_detached_session_partial))
+            }
         }
-        if (hub.repository.isInRoom(session.roomId)) {
-            hub.restoreDetachedSession(session)
-            refreshDetachedListeningStatus()
-            return
-        }
-        val ok = joinChatSession(session, identity)
-        if (!ok) {
-            DetachedSessionStore(getApplication()).clear()
-            AppSnackbarBus.show(appStr(R.string.error_restore_detached_session_failed))
-            return
-        }
-        hub.restoreDetachedSession(session)
         refreshDetachedListeningStatus()
     }
 
@@ -655,7 +730,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun joinChatSession(session: ChatSession, identity: Identity): Boolean {
         val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
-        return hub.repository.joinRoom(
+        return hub.getOrCreateRepository(session.roomId).joinRoom(
             serverUrl = session.serverUrl,
             room = session.roomId,
             sessionKey = session.sessionKey,

@@ -46,6 +46,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.zerorelay.R
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import android.view.WindowManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -106,7 +107,14 @@ fun ChatScreen(
     }
     val state by vm.uiState.collectAsState()
     var draft by rememberSaveable { mutableStateOf("") }
-    var showLeaveDialog by remember { mutableStateOf(false) }
+    var showDisconnectDialog by remember { mutableStateOf(false) }
+
+    fun backToList() {
+        vm.detachUi()
+        onLeave()
+    }
+
+    BackHandler(onBack = ::backToList)
     val clipboard = remember {
         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     }
@@ -128,25 +136,25 @@ fun ChatScreen(
     val copiedFingerprintMsg = stringResource(R.string.snackbar_copied_fingerprint)
     val copiedServerMsg = stringResource(R.string.snackbar_copied_server)
 
-    if (showLeaveDialog) {
+    if (showDisconnectDialog) {
         AlertDialog(
-            onDismissRequest = { showLeaveDialog = false },
-            title = { Text(stringResource(R.string.chat_leave_dialog_title), style = MaterialTheme.typography.headlineMedium) },
+            onDismissRequest = { showDisconnectDialog = false },
+            title = { Text(stringResource(R.string.chat_disconnect_dialog_title), style = MaterialTheme.typography.headlineMedium) },
             text = {
                 Text(
-                    stringResource(R.string.chat_leave_dialog_body),
+                    stringResource(R.string.chat_disconnect_dialog_body),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             },
             confirmButton = {
                 TextButton(onClick = {
-                    showLeaveDialog = false
+                    showDisconnectDialog = false
                     vm.leaveChat()
                     onLeave()
-                }) { Text(stringResource(R.string.action_leave)) }
+                }) { Text(stringResource(R.string.action_disconnect)) }
             },
             dismissButton = {
-                TextButton(onClick = { showLeaveDialog = false }) {
+                TextButton(onClick = { showDisconnectDialog = false }) {
                     Text(stringResource(R.string.action_cancel))
                 }
             },
@@ -164,7 +172,8 @@ fun ChatScreen(
                     null
                 },
                 connection = state.connection,
-                onLeave = { showLeaveDialog = true },
+                onBack = ::backToList,
+                onDisconnect = { showDisconnectDialog = true },
                 onCopyRoomId = {
                     val label = if (session.isGroup) "groupId" else "fingerprint"
                     val msg = if (session.isGroup) copiedGroupIdMsg else copiedFingerprintMsg

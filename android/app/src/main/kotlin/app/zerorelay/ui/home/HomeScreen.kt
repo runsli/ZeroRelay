@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCode
@@ -130,6 +131,15 @@ fun HomeScreen(
             viewModel.showVerifyContactDialog(contact)
         } else {
             viewModel.createSession(contact)?.let(onOpenChat)
+        }
+    }
+
+    fun openConversation(row: ConversationRowUi) {
+        if (row.peerNeedsVerification) {
+            viewModel.contactForConversation(row)?.let(viewModel::showVerifyContactDialog)
+                ?: viewModel.openConversation(row.roomId)?.let(onOpenChat)
+        } else {
+            viewModel.openConversation(row.roomId)?.let(onOpenChat)
         }
     }
 
@@ -488,6 +498,7 @@ fun HomeScreen(
                 HomeMainList(
                     state = state,
                     openContactChat = { openContactChat(it) },
+                    onOpenConversation = { openConversation(it) },
                     onOpenChat = onOpenChat,
                     viewModel = viewModel,
                     modifier = Modifier
@@ -501,6 +512,7 @@ fun HomeScreen(
             HomeMainList(
                 state = state,
                 openContactChat = { openContactChat(it) },
+                onOpenConversation = { openConversation(it) },
                 onOpenChat = onOpenChat,
                 viewModel = viewModel,
                 modifier = Modifier
@@ -519,6 +531,7 @@ fun HomeScreen(
 private fun HomeMainList(
     state: HomeUiState,
     openContactChat: (Contact) -> Unit,
+    onOpenConversation: (ConversationRowUi) -> Unit,
     onOpenChat: (ChatSession) -> Unit,
     viewModel: HomeViewModel,
     modifier: Modifier = Modifier,
@@ -543,14 +556,18 @@ private fun HomeMainList(
                 modifier = Modifier.padding(bottom = 8.dp),
             )
         }
-        val detachedName = state.detachedChatName
-        if (!detachedName.isNullOrBlank()) {
+        if (state.detachedSessionCount > 0) {
             DetachedConnectionBanner(
-                chatName = detachedName,
+                sessionCount = state.detachedSessionCount,
+                chatName = state.detachedChatName,
                 connection = state.detachedConnection,
                 showBatteryHint = !state.batteryOptimizationIgnored,
                 onOpenChat = {
-                    viewModel.detachedSessionForChat()?.let(onOpenChat)
+                    if (state.detachedSessionCount == 1) {
+                        viewModel.detachedSessionForChat()?.let(onOpenChat)
+                    } else {
+                        viewModel.selectTab(HomeTab.Conversations)
+                    }
                 },
                 onBatterySettings = {
                     BatteryOptimizationHelper.createRequestIntent(context)?.let { context.startActivity(it) }
@@ -561,6 +578,11 @@ private fun HomeMainList(
         }
         if (showTabs && onSelectTab != null) {
             PrimaryTabRow(selectedTabIndex = state.selectedTab.ordinal) {
+                Tab(
+                    selected = state.selectedTab == HomeTab.Conversations,
+                    onClick = { onSelectTab(HomeTab.Conversations) },
+                    text = { Text(stringResource(R.string.home_tab_conversations)) },
+                )
                 Tab(
                     selected = state.selectedTab == HomeTab.Contacts,
                     onClick = { onSelectTab(HomeTab.Contacts) },
@@ -575,6 +597,10 @@ private fun HomeMainList(
             Spacer(Modifier.height(12.dp))
         }
         when (state.selectedTab) {
+            HomeTab.Conversations -> ConversationsTab(
+                conversations = state.conversations,
+                onOpenConversation = onOpenConversation,
+            )
             HomeTab.Contacts -> ContactsTab(
                 contacts = state.contacts,
                 onOpenChat = { openContactChat(it) },
@@ -603,6 +629,113 @@ private fun HomeAddSheetItem(
         leadingContent = icon,
         modifier = Modifier.clickable(onClick = onClick),
     )
+}
+
+@Composable
+private fun ConversationsTab(
+    conversations: List<ConversationRowUi>,
+    onOpenConversation: (ConversationRowUi) -> Unit,
+) {
+    if (conversations.isEmpty()) {
+        EmptyHint(
+            title = stringResource(R.string.home_empty_conversations_title),
+            subtitle = stringResource(R.string.home_empty_conversations_subtitle),
+        )
+    } else {
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(conversations, key = { it.roomId }) { row ->
+                ConversationRow(
+                    row = row,
+                    onClick = { onOpenConversation(row) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConversationRow(
+    row: ConversationRowUi,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val preview = when {
+        row.lastMessagePreview.isBlank() -> stringResource(R.string.home_conversation_no_preview)
+        row.lastMessageIsMine -> stringResource(R.string.home_conversation_preview_you, row.lastMessagePreview)
+        else -> row.lastMessagePreview
+    }
+    val timeLabel = row.formattedTime()
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = CardShape,
+        color = cs.surfaceContainerLow,
+    ) {
+        ListItem(
+            headlineContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = row.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (timeLabel.isNotBlank()) {
+                        Spacer(Modifier.size(8.dp))
+                        Text(
+                            text = timeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            supportingContent = {
+                Text(
+                    text = preview,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            },
+            leadingContent = {
+                Icon(
+                    if (row.isGroup) Icons.Default.Group else Icons.Default.Forum,
+                    contentDescription = null,
+                    tint = cs.primary,
+                )
+            },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (row.peerNeedsVerification) {
+                        Badge(containerColor = cs.errorContainer) {
+                            Text(
+                                stringResource(R.string.home_badge_unverified),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                        Spacer(Modifier.size(8.dp))
+                    }
+                    if (row.unreadCount > 0) {
+                        Badge(containerColor = cs.primary) {
+                            Text(
+                                text = if (row.unreadCount > 99) "99+" else row.unreadCount.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = cs.onPrimary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                            )
+                        }
+                    }
+                }
+            },
+            colors = ListItemDefaults.colors(containerColor = cs.surfaceContainerLow),
+        )
+    }
 }
 
 @Composable
@@ -842,7 +975,8 @@ private fun GroupRow(
 
 @Composable
 private fun DetachedConnectionBanner(
-    chatName: String,
+    sessionCount: Int,
+    chatName: String?,
     connection: ConnectionState,
     showBatteryHint: Boolean,
     onOpenChat: () -> Unit,
@@ -868,7 +1002,11 @@ private fun DetachedConnectionBanner(
                     .clickable(onClick = onOpenChat),
             ) {
                 Text(
-                    text = stringResource(R.string.home_detached_listening, chatName),
+                    text = if (sessionCount > 1) {
+                        stringResource(R.string.home_detached_listening_multi, sessionCount)
+                    } else {
+                        stringResource(R.string.home_detached_listening, chatName.orEmpty())
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     color = cs.onSecondaryContainer,
                 )

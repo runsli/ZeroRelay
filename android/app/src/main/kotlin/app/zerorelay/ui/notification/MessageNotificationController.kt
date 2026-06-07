@@ -8,12 +8,15 @@ object MessageNotificationController {
     fun maybeNotify(context: Context, msg: ChatMessage) {
         if (msg.isMine) return
         if (!ActiveChatTracker.shouldNotify(msg.roomId)) return
-        val session = RelayMessagingHub.get(context).listeningSession()
-        if (session == null || session.roomId != msg.roomId) return
+        val hub = RelayMessagingHub.get(context)
+        val session = hub.sessionForRoom(msg.roomId) ?: return
+        if (!hub.repositoryFor(msg.roomId)?.isInRoom(msg.roomId).orFalse()) return
         ChatNotificationHelper.show(
             context = context,
             roomId = msg.roomId,
             session = session,
         )
     }
+
+    private fun Boolean?.orFalse(): Boolean = this == true
 }

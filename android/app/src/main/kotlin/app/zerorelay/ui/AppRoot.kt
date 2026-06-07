@@ -89,12 +89,6 @@ fun AppRoot(
                 homeViewModel.findChatSessionForRoom(roomId)?.let(openChat)
             }
 
-            if (listDetail) {
-                BackHandler(enabled = listDetailChat != null) {
-                    listDetailChat = null
-                }
-            }
-
             AnimatedContent(
                 targetState = screen,
                 transitionSpec = {
@@ -165,7 +159,6 @@ fun AppRoot(
                         )
                     }
                     is RootScreen.Chat -> {
-                        BackHandler { screen = RootScreen.Home }
                         ChatScreen(
                             session = current.session,
                             onLeave = { screen = RootScreen.Home },

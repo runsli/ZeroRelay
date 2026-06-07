@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Shield
@@ -39,7 +39,8 @@ import app.zerorelay.data.model.ConnectionState
 fun ZeroRelayTopBar(
     roomName: String,
     connection: ConnectionState,
-    onLeave: () -> Unit,
+    onBack: () -> Unit,
+    onDisconnect: () -> Unit,
     onCopyRoomId: () -> Unit,
     onCopyServerUrl: () -> Unit,
     onRetry: (() -> Unit)?,
@@ -53,8 +54,11 @@ fun ZeroRelayTopBar(
     CenterAlignedTopAppBar(
         modifier = modifier,
         navigationIcon = {
-            IconButton(onClick = onLeave) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_leave_chat))
+            IconButton(onClick = onBack) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.cd_back_to_list),
+                )
             }
         },
         title = {
@@ -133,10 +137,10 @@ fun ZeroRelayTopBar(
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    text = { Text(stringResource(R.string.chat_menu_leave), color = cs.error) },
+                    text = { Text(stringResource(R.string.chat_menu_disconnect), color = cs.error) },
                     onClick = {
                         menuExpanded = false
-                        onLeave()
+                        onDisconnect()
                     },
                 )
             }

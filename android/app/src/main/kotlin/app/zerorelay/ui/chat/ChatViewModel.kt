@@ -16,6 +16,7 @@ import app.zerorelay.ui.snackbar.AppSnackbarBus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,13 +35,13 @@ class ChatViewModel(
 ) : AndroidViewModel(application) {
 
     private val hub = RelayMessagingHub.get(application)
-    private val repository = hub.repository
     private val identityStore = IdentityStore(application)
 
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
     private var boundSession: ChatSession? = null
+    private var connectionJob: Job? = null
 
     private fun appStr(@StringRes resId: Int, vararg args: Any): String =
         getApplication<Application>().getString(resId, *args)
@@ -56,25 +57,32 @@ class ChatViewModel(
                 }
             }
         }
-        viewModelScope.launch {
-            hub.connection.collect { conn ->
-                if (boundSession != null) {
-                    _uiState.update { it.copy(connection = conn) }
-                }
-            }
-        }
     }
 
     fun bindSession(session: ChatSession) {
         boundSession = session
         hub.attachSession(session)
+        hub.registerConversation(session)
         val needsVerify = session.kind == ChatKind.Direct &&
             identityStore.findContact(session.peerContactId)?.verified != true
+        val repository = hub.getOrCreateRepository(session.roomId)
+        connectionJob?.cancel()
+        connectionJob = viewModelScope.launch {
+            hub.connectionFor(session.roomId).collect { conn ->
+                if (boundSession?.roomId == session.roomId) {
+                    _uiState.update { it.copy(connection = conn) }
+                }
+            }
+        }
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
+            val persisted = hub.loadPersistedMessages(session.roomId)
+            if (persisted.isNotEmpty()) {
+                hub.seedMessages(session.roomId, persisted)
+            }
             if (repository.isInRoom(session.roomId)) {
-                val conn = hub.connection.value
+                val conn = hub.connectionFor(session.roomId).value
                 if (conn == ConnectionState.Disconnected || conn == ConnectionState.Error) {
                     repository.reconnectTransport()
                 }
@@ -83,7 +91,7 @@ class ChatViewModel(
                         roomId = session.roomId,
                         senderId = senderId,
                         messages = hub.messagesFor(session.roomId),
-                        connection = hub.connection.value,
+                        connection = hub.connectionFor(session.roomId).value,
                         initError = null,
                         peerNeedsVerification = needsVerify,
                         peerFingerprint = session.peerFingerprint,
@@ -91,9 +99,11 @@ class ChatViewModel(
                 }
                 return@launch
             }
+            hub.ensureCapacityForNewRoom(session.roomId)
             _uiState.value = ChatUiState(
                 roomId = session.roomId,
                 senderId = senderId,
+                messages = persisted,
                 connection = ConnectionState.Connecting,
                 peerNeedsVerification = needsVerify,
                 peerFingerprint = session.peerFingerprint,
@@ -121,13 +131,12 @@ class ChatViewModel(
         }
     }
 
-    /** 用户明确退出聊天：断开中继并停止后台拉取。 */
+    /** 用户明确退出聊天：断开该房间中继；本地历史保留在加密数据库中。 */
     fun leaveChat() {
-        val room = boundSession?.roomId ?: hub.listeningSession()?.roomId
+        val room = boundSession?.roomId ?: return
         boundSession = null
-        hub.clearSession()
-        if (room != null) hub.clearMessages(room)
-        repository.leaveRoom()
+        hub.leaveRoom(room)
+        hub.clearMessages(room)
         _uiState.update {
             it.copy(
                 messages = emptyList(),
@@ -136,7 +145,7 @@ class ChatViewModel(
         }
     }
 
-    /** 返回首页：保持 relay 连接，会话转入 detached。 */
+    /** 返回首页：保持该房间 relay 连接，会话转入 detached。 */
     fun detachUi() {
         hub.detachSession()
         boundSession = null
@@ -151,6 +160,8 @@ class ChatViewModel(
     fun sendMessage(text: String) {
         val content = text.trim()
         if (content.isEmpty()) return
+        val session = boundSession ?: return
+        val repository = hub.repositoryFor(session.roomId) ?: return
         if (_uiState.value.peerNeedsVerification) {
             AppSnackbarBus.show(appStr(R.string.chat_snackbar_verify_before_send))
             return
@@ -165,6 +176,7 @@ class ChatViewModel(
 
     fun retry() {
         val session = boundSession ?: return
+        val repository = hub.repositoryFor(session.roomId) ?: return
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
@@ -178,6 +190,7 @@ class ChatViewModel(
             val ok = if (repository.isInRoom(session.roomId)) {
                 repository.reconnectTransport()
             } else {
+                hub.ensureCapacityForNewRoom(session.roomId)
                 repository.joinRoom(
                     session.serverUrl,
                     session.roomId,

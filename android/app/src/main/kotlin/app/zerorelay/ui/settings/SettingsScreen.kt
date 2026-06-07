@@ -3,6 +3,7 @@ package app.zerorelay.ui.settings
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,6 +50,7 @@ fun SettingsScreen(
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var pendingExportPassphrase by remember { mutableStateOf<String?>(null) }
+    var showClearMessagesDialog by remember { mutableStateOf(false) }
 
     val batteryOptLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult(),
@@ -240,6 +242,23 @@ fun SettingsScreen(
                 onCheckedChange = viewModel::setKeepAliveInBackground,
             )
             Spacer(Modifier.height(12.dp))
+            Text(
+                stringResource(R.string.settings_max_background_sessions_summary, state.maxBackgroundSessions),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (count in 1..5) {
+                    TextButton(
+                        onClick = { viewModel.setMaxBackgroundSessions(count) },
+                        enabled = state.maxBackgroundSessions != count,
+                    ) {
+                        Text(stringResource(R.string.settings_max_background_sessions_value, count))
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
             if (state.batteryOptimizationIgnored) {
                 Text(
                     stringResource(R.string.settings_battery_optimization_done),
@@ -284,12 +303,51 @@ fun SettingsScreen(
             HorizontalDivider()
             Spacer(Modifier.height(24.dp))
 
+            Text(stringResource(R.string.settings_data), style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                stringResource(R.string.settings_clear_messages_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { showClearMessagesDialog = true }) {
+                Text(stringResource(R.string.settings_clear_messages))
+            }
+
+            Spacer(Modifier.height(24.dp))
+            HorizontalDivider()
+            Spacer(Modifier.height(24.dp))
+
             Text(stringResource(R.string.settings_security_backup), style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(8.dp))
             TextButton(onClick = { viewModel.showRatchetBackup(true) }) {
                 Text(stringResource(R.string.settings_ratchet_backup))
             }
         }
+    }
+
+    if (showClearMessagesDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearMessagesDialog = false },
+            title = { Text(stringResource(R.string.settings_clear_messages_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_clear_messages_confirm_body)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showClearMessagesDialog = false
+                        viewModel.clearAllLocalMessages()
+                    },
+                ) {
+                    Text(stringResource(R.string.action_clear))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showClearMessagesDialog = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
     }
 }
 

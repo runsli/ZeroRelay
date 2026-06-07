@@ -2,8 +2,6 @@ package app.zerorelay.data.local
 
 import android.content.Context
 import androidx.core.content.edit
-import org.json.JSONArray
-
 class UserPreferences(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -34,40 +32,17 @@ class UserPreferences(context: Context) {
         prefs.edit { putBoolean(KEY_KEEP_ALIVE, enabled) }
     }
 
-    fun getRecentRooms(): List<String> {
-        val json = prefs.getString(KEY_RECENT_ROOMS, null) ?: return emptyList()
-        return try {
-            val arr = JSONArray(json)
-            buildList {
-                for (i in 0 until arr.length()) {
-                    add(arr.getString(i))
-                }
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
+    /** 后台同时保持 relay 连接的 detached 会话上限（默认 3）。 */
+    fun getMaxBackgroundSessions(): Int =
+        prefs.getInt(KEY_MAX_BACKGROUND_SESSIONS, DEFAULT_MAX_BACKGROUND_SESSIONS)
+            .coerceIn(MIN_BACKGROUND_SESSIONS, MAX_BACKGROUND_SESSIONS)
 
-    fun addRecentContact(contactId: String) {
-        val ids = getRecentContactIds().toMutableList()
-        ids.remove(contactId)
-        ids.add(0, contactId)
+    fun setMaxBackgroundSessions(count: Int) {
         prefs.edit {
-            putString(KEY_RECENT_CONTACTS, JSONArray(ids.take(10)).toString())
-        }
-    }
-
-    fun getRecentContactIds(): List<String> {
-        val json = prefs.getString(KEY_RECENT_CONTACTS, null) ?: return emptyList()
-        return try {
-            val arr = JSONArray(json)
-            buildList {
-                for (i in 0 until arr.length()) {
-                    add(arr.getString(i))
-                }
-            }
-        } catch (_: Exception) {
-            emptyList()
+            putInt(
+                KEY_MAX_BACKGROUND_SESSIONS,
+                count.coerceIn(MIN_BACKGROUND_SESSIONS, MAX_BACKGROUND_SESSIONS),
+            )
         }
     }
 
@@ -77,7 +52,9 @@ class UserPreferences(context: Context) {
         private const val KEY_USE_DYNAMIC_COLOR = "use_dynamic_color"
         private const val KEY_ALLOW_SCREENSHOTS = "allow_screenshots"
         private const val KEY_KEEP_ALIVE = "keep_alive_in_background"
-        private const val KEY_RECENT_ROOMS = "recent_rooms"
-        private const val KEY_RECENT_CONTACTS = "recent_contacts"
+        private const val KEY_MAX_BACKGROUND_SESSIONS = "max_background_sessions"
+        private const val DEFAULT_MAX_BACKGROUND_SESSIONS = 3
+        private const val MIN_BACKGROUND_SESSIONS = 1
+        private const val MAX_BACKGROUND_SESSIONS = 5
     }
 }

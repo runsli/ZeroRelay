@@ -1,6 +1,7 @@
 package app.zerorelay.ui.home
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -25,6 +26,17 @@ fun HomeNavigationRail(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
+        NavigationRailItem(
+            selected = selectedTab == HomeTab.Conversations,
+            onClick = { onSelectTab(HomeTab.Conversations) },
+            icon = {
+                Icon(
+                    Icons.Default.Forum,
+                    contentDescription = stringResource(R.string.home_tab_conversations),
+                )
+            },
+            label = { Text(stringResource(R.string.home_tab_conversations)) },
+        )
         NavigationRailItem(
             selected = selectedTab == HomeTab.Contacts,
             onClick = { onSelectTab(HomeTab.Contacts) },

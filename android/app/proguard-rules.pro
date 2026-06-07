@@ -8,3 +8,12 @@
 
 # Tink / security-crypto (compile-only annotations)
 -dontwarn com.google.errorprone.annotations.**
+
+# SQLCipher
+-keep class net.sqlcipher.** { *; }
+-keep class net.sqlcipher.database.** { *; }
+-dontwarn net.sqlcipher.**
+
+# Room
+-keep class * extends androidx.room.RoomDatabase
+-dontwarn androidx.room.paging.**

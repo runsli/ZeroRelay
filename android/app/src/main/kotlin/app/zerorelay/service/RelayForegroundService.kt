@@ -22,10 +22,11 @@ class RelayForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val peerName = intent?.getStringExtra(EXTRA_PEER_NAME).orEmpty()
+        val sessionCount = intent?.getIntExtra(EXTRA_SESSION_COUNT, 0) ?: 0
+        val summary = intent?.getStringExtra(EXTRA_SUMMARY).orEmpty()
         val roomId = intent?.getStringExtra(EXTRA_ROOM_ID).orEmpty()
         ensureChannel()
-        val notification = buildNotification(peerName, roomId)
+        val notification = buildNotification(sessionCount, summary, roomId)
         ServiceCompat.startForeground(
             this,
             NOTIFICATION_ID,
@@ -53,7 +54,7 @@ class RelayForegroundService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun buildNotification(peerName: String, roomId: String): Notification {
+    private fun buildNotification(sessionCount: Int, summary: String, roomId: String): Notification {
         val launchIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             if (roomId.isNotBlank()) putExtra(MainActivity.EXTRA_ROOM_ID, roomId)
@@ -64,10 +65,13 @@ class RelayForegroundService : Service() {
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val body = if (peerName.isNotBlank()) {
-            getString(R.string.foreground_notification_body, peerName)
-        } else {
-            getString(R.string.foreground_notification_body_generic)
+        val body = when {
+            sessionCount > 1 ->
+                getString(R.string.foreground_notification_body_multi, sessionCount)
+            summary.isNotBlank() ->
+                getString(R.string.foreground_notification_body, summary)
+            else ->
+                getString(R.string.foreground_notification_body_generic)
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_notify)
@@ -83,13 +87,24 @@ class RelayForegroundService : Service() {
         private const val NOTIFICATION_ID = 1001
         const val CHANNEL_ID = "zerorelay_relay"
 
-        private const val EXTRA_PEER_NAME = "extra_peer_name"
+        private const val EXTRA_SESSION_COUNT = "extra_session_count"
+        private const val EXTRA_SUMMARY = "extra_summary"
         private const val EXTRA_ROOM_ID = "extra_room_id"
 
-        fun start(context: Context, session: ChatSession) {
+        fun start(context: Context, sessions: List<ChatSession>) {
+            if (sessions.isEmpty()) {
+                stop(context)
+                return
+            }
+            val primary = sessions.last()
+            val summary = when (sessions.size) {
+                1 -> primary.peerDisplayName
+                else -> sessions.joinToString("、") { it.peerDisplayName }.take(80)
+            }
             val intent = Intent(context, RelayForegroundService::class.java).apply {
-                putExtra(EXTRA_PEER_NAME, session.peerDisplayName)
-                putExtra(EXTRA_ROOM_ID, session.roomId)
+                putExtra(EXTRA_SESSION_COUNT, sessions.size)
+                putExtra(EXTRA_SUMMARY, summary)
+                putExtra(EXTRA_ROOM_ID, primary.roomId)
             }
             androidx.core.content.ContextCompat.startForegroundService(context, intent)
         }

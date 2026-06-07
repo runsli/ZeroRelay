@@ -14,14 +14,19 @@
     <string name="cd_create_group">创建群聊</string>
     <string name="cd_group_invite_qr">群邀请码</string>
     <string name="cd_qr_image">二维码</string>
-    <string name="cd_leave_chat">退出聊天</string>
+    <string name="cd_back_to_list">返回聊天列表</string>
     <string name="cd_e2ee">端到端加密</string>
     <string name="cd_reconnect">重连</string>
     <string name="cd_empty_chat">暂无消息</string>
 
     <!-- Home -->
+    <string name="home_tab_conversations">会话</string>
     <string name="home_tab_contacts">联系人</string>
     <string name="home_tab_groups">群聊</string>
+    <string name="home_empty_conversations_title">暂无会话</string>
+    <string name="home_empty_conversations_subtitle">选择联系人或群聊开始聊天，消息将显示在这里</string>
+    <string name="home_conversation_preview_you">你: %1$s</string>
+    <string name="home_conversation_no_preview">暂无消息</string>
     <string name="home_empty_contacts_title">暂无联系人</string>
     <string name="home_empty_contacts_subtitle">扫码或粘贴对方公钥后即可单聊</string>
     <string name="home_empty_groups_title">暂无群聊</string>
@@ -99,13 +104,18 @@
     <string name="settings_keep_alive_title">后台保持加密连接</string>
     <string name="settings_keep_alive_summary">返回聊天列表后显示常驻通知以维持 relay 连接；不含消息正文</string>
     <string name="settings_keep_alive_disabled_hint">已关闭后台保活；连接仍保留，但系统可能更快结束进程</string>
+    <string name="settings_max_background_sessions_title">后台会话上限</string>
+    <string name="settings_max_background_sessions_summary">返回列表后最多同时保持 %1$d 个 relay 连接；超出时自动断开最久未用的会话</string>
+    <string name="settings_max_background_sessions_value">%1$d 个</string>
     <string name="settings_battery_optimization_summary">部分机型会限制后台 relay 连接；建议允许 ZeroRelay 忽略电池优化。</string>
     <string name="settings_battery_optimization_action">允许忽略电池优化</string>
     <string name="settings_battery_optimization_done">已允许忽略电池优化</string>
     <string name="home_detached_listening">后台监听：%1$s</string>
+    <string name="home_detached_listening_multi">后台监听 %1$d 个会话</string>
     <string name="home_detached_battery_hint">允许忽略电池优化，减少后台断连</string>
     <string name="error_restore_detached_session">无法恢复上次会话（联系人或群聊可能已删除）</string>
     <string name="error_restore_detached_session_failed">恢复后台连接失败，请重新打开聊天</string>
+    <string name="error_restore_detached_session_partial">部分后台会话恢复失败，请重新打开对应聊天</string>
     <string name="settings_privacy">隐私</string>
     <string name="settings_allow_screenshots">允许截图与录屏</string>
     <string name="settings_allow_screenshots_hint">关闭后，聊天界面将阻止系统截图与屏幕录制</string>
@@ -118,6 +128,14 @@
     <string name="foreground_notification_title">ZeroRelay 正在保持连接</string>
     <string name="foreground_notification_body">正在监听：%1$s</string>
     <string name="foreground_notification_body_generic">正在监听当前会话</string>
+    <string name="foreground_notification_body_multi">正在监听 %1$d 个会话</string>
+    <string name="settings_data">数据</string>
+    <string name="settings_clear_messages">清除所有本地消息</string>
+    <string name="settings_clear_messages_hint">仅删除本机聊天记录，不影响联系人与加密状态</string>
+    <string name="settings_clear_messages_confirm_title">清除本地消息？</string>
+    <string name="settings_clear_messages_confirm_body">将删除所有房间的聊天历史，此操作不可撤销。</string>
+    <string name="action_clear">清除</string>
+    <string name="snackbar_messages_cleared">已清除所有本地消息</string>
     <string name="settings_security_backup">安全与备份</string>
     <string name="settings_ratchet_backup">棘轮状态备份 / 恢复</string>
 
@@ -138,13 +156,13 @@
     <!-- Chat top bar -->
     <string name="chat_menu_copy_fingerprint">复制安全码</string>
     <string name="chat_menu_copy_server">复制服务器地址</string>
-    <string name="chat_menu_leave">退出聊天</string>
+    <string name="chat_menu_disconnect">离开并断开</string>
     <string name="chat_connection_connected">已连接 · 端到端加密</string>
     <string name="chat_connection_connecting">连接中…</string>
     <string name="chat_connection_disconnected">已断开</string>
     <string name="chat_connection_error">连接错误</string>
-    <string name="chat_leave_dialog_title">退出聊天</string>
-    <string name="chat_leave_dialog_body">确定返回主页？重新进入可继续收发加密消息。</string>
+    <string name="chat_disconnect_dialog_title">离开并断开连接？</string>
+    <string name="chat_disconnect_dialog_body">将停止监听此会话的中继消息，后台不再接收新消息。本地聊天历史会保留，重新进入后可继续查看。</string>
     <string name="chat_group_meta">群聊 · %1$d 人</string>
     <string name="snackbar_copied_group_id">已复制群 ID</string>
     <string name="snackbar_copied_fingerprint">已复制安全码</string>
@@ -154,7 +172,7 @@
     <string name="home_create_group_warning">警告：已勾选 %1$d 位未验证联系人，建议先单聊核对安全码后再建群。</string>
     <string name="home_group_member_count">%1$d 人</string>
     <string name="error_identity_not_ready">身份未就绪</string>
-    <string name="action_leave">退出</string>
+    <string name="action_disconnect">断开</string>
     <string name="chat_empty_title">暂无消息</string>
     <string name="chat_empty_subtitle">发送第一条消息，开始端到端加密对话</string>
     <string name="chat_verify_banner">对方尚未验证。请核对安全码后再发送敏感内容。</string>
