@@ -2,6 +2,7 @@ package app.zerorelay.data.session
 
 import android.util.Base64
 import app.zerorelay.data.crypto.IdentityCrypto
+import app.zerorelay.data.error.DataError
 import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatSession
@@ -33,7 +34,7 @@ object SessionFactory {
 
     fun createForGroup(serverUrl: String, identity: Identity, group: ChatGroup): ChatSession {
         val sessionKey = Base64.decode(group.groupKeyBase64, Base64.NO_WRAP)
-        require(sessionKey.size == 32) { "群密钥无效" }
+        if (sessionKey.size != 32) throw DataError.GroupSessionKeyInvalid
         return ChatSession(
             serverUrl = ServerUrl.normalize(serverUrl),
             roomId = group.roomId,

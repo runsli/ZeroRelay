@@ -3,6 +3,7 @@ package app.zerorelay.data.identity
 import android.os.Build
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
+import app.zerorelay.data.error.DataError
 import android.util.Base64
 import java.security.KeyStore
 import javax.crypto.Cipher
@@ -27,7 +28,7 @@ object SecureKeyStorage {
 
     fun unwrapPrivateKey(wrapped: String): ByteArray {
         val blob = Base64.decode(wrapped, Base64.NO_WRAP)
-        require(blob.size > 12) { "私钥封装无效" }
+        if (blob.size <= 12) throw DataError.InvalidPrivateKeyWrap
         val iv = blob.copyOf(12)
         val ciphertext = blob.copyOfRange(12, blob.size)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")

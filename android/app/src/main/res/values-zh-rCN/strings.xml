@@ -385,4 +385,6 @@
     <string name="user_error_group_expired_action">在群聊列表中轮换密钥，并分享新的邀请二维码。</string>
     <string name="user_error_not_ready_title">应用尚未就绪</string>
     <string name="user_error_not_ready_action">请完成身份初始化后再试。</string>
+    <string name="user_error_backup_restore_title">无法恢复备份</string>
+    <string name="user_error_backup_restore_action">请检查口令是否正确、文件是否为有效的 ZeroRelay 备份，然后重试。</string>
 </resources>

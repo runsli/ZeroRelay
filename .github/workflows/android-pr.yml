@@ -24,6 +24,9 @@ jobs:
       - name: Check Android strings en/zh key parity
         run: bash scripts/check-android-strings.sh
 
+      - name: Check data-layer exception messages (no CJK)
+        run: bash scripts/check-data-exception-messages.sh
+
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:

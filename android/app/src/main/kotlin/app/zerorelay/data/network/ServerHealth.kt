@@ -1,6 +1,7 @@
 package app.zerorelay.data.network
 
 import android.content.Context
+import app.zerorelay.data.error.DataError
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
@@ -13,13 +14,13 @@ object ServerHealth {
 
     suspend fun check(context: Context, baseUrl: String): Result<CheckResult> = withContext(Dispatchers.IO) {
         val url = ServerUrl.normalize(baseUrl)
-        if (url.isEmpty()) return@withContext Result.failure(IllegalArgumentException("服务器地址为空"))
+        if (url.isEmpty()) return@withContext Result.failure(DataError.ServerUrlEmpty)
         val client = RelayHttpClient.create(context, url)
         val request = Request.Builder().url("$url/").get().build()
         runCatching {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
-                    throw IllegalStateException("HTTP ${response.code}")
+                    throw DataError.ServerHttpError(response.code)
                 }
                 val handshake = response.handshake
                 val pinEval = if (handshake != null) {
@@ -33,12 +34,12 @@ object ServerHealth {
                 val body = response.body?.string().orEmpty()
                 val status = runCatching { org.json.JSONObject(body).optString("status") }.getOrDefault("")
                 if (status != "ok") {
-                    throw IllegalStateException("服务器响应异常")
+                    throw DataError.ServerResponseInvalid
                 }
                 CheckResult(url, pinEval)
             }
         }
     }
 
-    class CertificatePinMismatchException(val newPin: String) : Exception("服务器证书已变更，需确认后信任")
+    class CertificatePinMismatchException(val newPin: String) : Exception("tls certificate pin mismatch")
 }

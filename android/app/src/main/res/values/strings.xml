@@ -385,4 +385,6 @@
     <string name="user_error_group_expired_action">Rotate the group key in the group list and share a new invite QR code.</string>
     <string name="user_error_not_ready_title">App not ready</string>
     <string name="user_error_not_ready_action">Finish identity setup and try again.</string>
+    <string name="user_error_backup_restore_title">Backup could not be restored</string>
+    <string name="user_error_backup_restore_action">Check the passphrase and that the file is a valid ZeroRelay backup, then try again.</string>
 </resources>

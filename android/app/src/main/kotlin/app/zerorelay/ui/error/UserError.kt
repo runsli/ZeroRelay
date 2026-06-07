@@ -22,6 +22,7 @@ enum class UserErrorKind {
     AddContactFailed,
     CreateGroup,
     GroupExpired,
+    BackupRestoreFailed,
     NotReady,
     Generic,
 }
@@ -117,6 +118,11 @@ fun UserError.resolveCopy(): UserErrorCopy {
             action = stringResource(R.string.user_error_not_ready_action),
             detail = detailText,
         )
+        UserErrorKind.BackupRestoreFailed -> UserErrorCopy(
+            title = stringResource(R.string.user_error_backup_restore_title),
+            action = stringResource(R.string.user_error_backup_restore_action),
+            detail = detailText,
+        )
         UserErrorKind.Generic -> UserErrorCopy(
             title = detailText ?: stringResource(R.string.user_error_generic_title),
             action = null,
@@ -144,6 +150,7 @@ private fun copyRes(kind: UserErrorKind): ErrorRes = when (kind) {
     UserErrorKind.AddContactFailed -> ErrorRes(R.string.user_error_add_contact_title)
     UserErrorKind.CreateGroup -> ErrorRes(R.string.user_error_create_group_title)
     UserErrorKind.GroupExpired -> ErrorRes(R.string.user_error_group_expired_title)
+    UserErrorKind.BackupRestoreFailed -> ErrorRes(R.string.user_error_backup_restore_title)
     UserErrorKind.NotReady -> ErrorRes(R.string.user_error_not_ready_title)
     UserErrorKind.Generic -> ErrorRes(R.string.user_error_generic_title)
 }

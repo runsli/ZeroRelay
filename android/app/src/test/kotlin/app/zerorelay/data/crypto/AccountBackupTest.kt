@@ -1,7 +1,9 @@
 package app.zerorelay.data.crypto
 
+import app.zerorelay.data.error.DataError
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,13 +34,15 @@ class AccountBackupTest {
         assertTrue(blob.contains(AccountBackup.FORMAT))
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun decryptImport_rejectsUnsupportedFormat() {
         val blob =
             AccountBackup.encryptExport(passphrase, JSONObject().put("x", 1))
                 .replace(AccountBackup.FORMAT, "other-format")
 
-        AccountBackup.decryptImport(passphrase, blob)
+        assertThrows(DataError.BackupFormatUnsupported::class.java) {
+            AccountBackup.decryptImport(passphrase, blob)
+        }
     }
 
     @Test(expected = Exception::class)

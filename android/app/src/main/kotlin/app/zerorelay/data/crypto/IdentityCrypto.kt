@@ -1,6 +1,7 @@
 package app.zerorelay.data.crypto
 
 import android.util.Base64
+import app.zerorelay.data.error.DataError
 import org.bouncycastle.crypto.agreement.X25519Agreement
 import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator
@@ -35,7 +36,7 @@ object IdentityCrypto {
 
     fun decodePublicKey(encoded: String): ByteArray {
         val bytes = Base64.decode(encoded.trim(), Base64.NO_WRAP)
-        require(bytes.size == PUBLIC_KEY_LENGTH) { "公钥长度无效" }
+        if (bytes.size != PUBLIC_KEY_LENGTH) throw DataError.InvalidPublicKey
         return bytes
     }
 

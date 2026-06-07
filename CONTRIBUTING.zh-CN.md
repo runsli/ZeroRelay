@@ -91,6 +91,8 @@ cd android
 
 本地检查：`bash scripts/check-android-strings.sh`
 
+`data/` 层使用 `DataError`（在 ViewModel 映射为 `UserError`），异常信息不得含中文。检查：`bash scripts/check-data-exception-messages.sh`
+
 ## Commit 信息
 
 建议使用简短前缀：

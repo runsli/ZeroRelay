@@ -11,6 +11,7 @@ import app.zerorelay.data.crypto.GroupExchange
 import app.zerorelay.data.crypto.IdentityCrypto
 import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.model.Contact
+import app.zerorelay.data.error.DataError
 import app.zerorelay.data.model.Identity
 import org.json.JSONArray
 import org.json.JSONObject
@@ -95,7 +96,7 @@ class IdentityStore(context: Context) {
     fun addContactFromPayload(payload: ContactExchange.Payload): Contact {
         val publicKey = IdentityCrypto.decodePublicKey(payload.publicKeyBase64)
         val own = getOrCreateIdentity()
-        require(!publicKey.contentEquals(own.publicKey)) { "不能添加自己的公钥" }
+        if (publicKey.contentEquals(own.publicKey)) throw DataError.AddSelfAsContact
 
         val id = IdentityCrypto.contactIdFromPublicKey(publicKey)
         val name = payload.displayName?.trim().takeUnless { it.isNullOrBlank() }
@@ -187,7 +188,7 @@ class IdentityStore(context: Context) {
 
     fun createGroup(displayName: String, memberContactIds: List<String>): ChatGroup {
         val name = displayName.trim()
-        require(name.isNotBlank()) { "群名称不能为空" }
+        if (name.isBlank()) throw DataError.GroupNameEmpty
         val groupId = GroupCrypto.generateGroupId()
         val groupKey = GroupCrypto.generateGroupKey()
         val roomId = GroupCrypto.deriveRoomId(groupId)
@@ -208,9 +209,9 @@ class IdentityStore(context: Context) {
     }
 
     fun joinGroupFromInvite(payload: GroupExchange.InvitePayload): ChatGroup {
-        require(!payload.isExpired()) { "群邀请已过期，请向群主索取新二维码" }
+        if (payload.isExpired()) throw DataError.GroupInviteExpired
         val keyBytes = Base64.decode(payload.groupKeyBase64, Base64.NO_WRAP)
-        require(keyBytes.size == 32) { "群邀请密钥无效" }
+        if (keyBytes.size != 32) throw DataError.GroupInviteKeyInvalid
         val roomId = GroupCrypto.deriveRoomId(payload.groupId)
         val group = ChatGroup(
             id = payload.groupId,
@@ -234,7 +235,7 @@ class IdentityStore(context: Context) {
     fun findGroup(id: String): ChatGroup? = getGroups().firstOrNull { it.id == id }
 
     fun rotateGroupKey(groupId: String): ChatGroup {
-        val existing = findGroup(groupId) ?: error("群聊不存在")
+        val existing = findGroup(groupId) ?: throw DataError.GroupNotFound
         val newKey = GroupCrypto.generateGroupKey()
         val newVersion = existing.keyVersion + 1
         val now = System.currentTimeMillis()
@@ -284,7 +285,7 @@ class IdentityStore(context: Context) {
     fun importSnapshotJson(snapshot: JSONObject) {
         val publicKey = Base64.decode(snapshot.getString("publicKey"), Base64.NO_WRAP)
         val privateKey = Base64.decode(snapshot.getString("privateKey"), Base64.NO_WRAP)
-        require(publicKey.isNotEmpty() && privateKey.isNotEmpty()) { "身份密钥无效" }
+        if (publicKey.isEmpty() || privateKey.isEmpty()) throw DataError.IdentityKeyInvalid
         securePrefs.edit {
             putString(KEY_PUBLIC, Base64.encodeToString(publicKey, Base64.NO_WRAP))
             remove(KEY_PRIVATE)

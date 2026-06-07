@@ -91,6 +91,8 @@ User-facing copy lives in two files — keep keys in sync:
 
 Verify locally: `bash scripts/check-android-strings.sh`
 
+Data-layer errors use typed `DataError` (mapped to `UserError` in ViewModels) — no Chinese in exception messages. Check: `bash scripts/check-data-exception-messages.sh`
+
 ## Commit messages
 
 Use concise prefixes:

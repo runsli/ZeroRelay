@@ -37,6 +37,7 @@ import app.zerorelay.data.network.ServerUrl
 import app.zerorelay.data.session.SessionFactory
 import app.zerorelay.ui.error.UserError
 import app.zerorelay.ui.error.UserErrorKind
+import app.zerorelay.ui.error.UserErrorMapping
 import app.zerorelay.ui.snackbar.AppSnackbarBus
 import app.zerorelay.ui.util.BatteryOptimizationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -405,10 +406,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 it.copy(
                                     serverChecking = false,
                                     serverCheckOk = false,
-                                    userError = UserError(
-                                        UserErrorKind.ServerUnreachable,
-                                        e.message ?: appStr(R.string.error_unknown),
-                                    ),
+                                    userError = UserErrorMapping.fromThrowable(e),
                                 )
                             }
                         }
@@ -515,7 +513,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
             true
         } catch (e: Exception) {
-            setUserError(UserErrorKind.CreateGroup, e.message)
+            setUserError(UserErrorMapping.fromThrowable(e))
             false
         }
     }
@@ -541,7 +539,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 PasteResult.GroupJoined(session)
             } catch (e: Exception) {
-                setUserError(UserErrorKind.JoinGroup, e.message)
+                setUserError(UserErrorMapping.fromThrowable(e))
                 PasteResult.Failed
             }
         }
@@ -566,7 +564,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.update { it.copy(selectedTab = HomeTab.Groups, userError = null) }
                 ScanHandleResult.GroupJoined(session)
             } catch (e: Exception) {
-                val err = UserError(UserErrorKind.JoinGroup, e.message)
+                val err = UserErrorMapping.fromThrowable(e)
                 _uiState.update { it.copy(userError = err) }
                 ScanHandleResult.Error(err)
             }
@@ -596,7 +594,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             promptNicknameDialog(contact)
             true
         } catch (e: Exception) {
-            setUserError(UserErrorKind.AddContactFailed, e.message)
+            setUserError(UserErrorMapping.fromThrowable(e))
             false
         }
     }
@@ -764,14 +762,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 true
             }
         } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    userError = UserError(
-                        UserErrorKind.Generic,
-                        appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)),
-                    ),
-                )
-            }
+            setUserError(UserErrorMapping.fromThrowable(e))
             false
         }
     }
@@ -803,14 +794,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
             _uiState.update { it.copy(showMigrationImportChecklist = true) }
         } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    userError = UserError(
-                        UserErrorKind.Generic,
-                        appStr(R.string.error_account_backup_restore, e.message ?: appStr(R.string.error_unknown)),
-                    ),
-                )
-            }
+            setUserError(UserErrorMapping.fromThrowable(e))
         }
     }
 
@@ -959,14 +943,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             AppSnackbarBus.show(appStr(R.string.snackbar_ratchet_restored))
             true
         } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    userError = UserError(
-                        UserErrorKind.Generic,
-                        appStr(R.string.error_ratchet_restore, e.message ?: appStr(R.string.error_unknown)),
-                    ),
-                )
-            }
+            setUserError(UserErrorMapping.fromThrowable(e))
             false
         }
     }
@@ -977,7 +954,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             refreshGroups()
             _uiState.update { it.copy(inviteGroup = group, inviteHighlightRotation = true) }
         } catch (e: Exception) {
-            setUserError(UserErrorKind.Generic, e.message ?: appStr(R.string.error_rotate_key))
+            setUserError(UserErrorMapping.fromThrowable(e))
         }
     }
 
@@ -1045,8 +1022,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearUserError() = _uiState.update { it.copy(userError = null) }
 
+    private fun setUserError(error: UserError) {
+        _uiState.update { it.copy(userError = error) }
+    }
+
     private fun setUserError(kind: UserErrorKind, detail: String? = null) {
-        _uiState.update { it.copy(userError = UserError(kind, detail)) }
+        setUserError(UserError(kind, detail))
     }
 
     fun showGroupInviteForRoom(roomId: String) {

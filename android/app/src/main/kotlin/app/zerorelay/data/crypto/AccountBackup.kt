@@ -1,5 +1,6 @@
 package app.zerorelay.data.crypto
 
+import app.zerorelay.data.error.DataError
 import org.json.JSONObject
 
 /** 口令保护的完整账户备份（格式标识：zero-relay-account-backup-v1）。 */
@@ -19,7 +20,7 @@ object AccountBackup {
 
     fun decryptImport(passphrase: CharArray, blob: String): JSONObject {
         val outer = JSONObject(blob.trim())
-        require(outer.optString("format") == FORMAT) { "备份格式不支持" }
+        if (outer.optString("format") != FORMAT) throw DataError.BackupFormatUnsupported
         val inner = JSONObject().apply {
             put("v", outer.getInt("v"))
             put("salt", outer.getString("salt"))

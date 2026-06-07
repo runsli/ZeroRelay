@@ -1,6 +1,7 @@
 package app.zerorelay.data.crypto
 
 import android.util.Base64
+import app.zerorelay.data.error.DataError
 import org.json.JSONObject
 import java.security.SecureRandom
 import javax.crypto.Cipher
@@ -34,7 +35,7 @@ object RatchetBackup {
 
     fun decryptImport(passphrase: CharArray, blob: String): JSONObject {
         val json = JSONObject(blob)
-        require(json.optInt("v") == VERSION) { "备份版本不支持" }
+        if (json.optInt("v") != VERSION) throw DataError.BackupVersionUnsupported
         val salt = Base64.decode(json.getString("salt"), Base64.NO_WRAP)
         val iv = Base64.decode(json.getString("iv"), Base64.NO_WRAP)
         val data = Base64.decode(json.getString("data"), Base64.NO_WRAP)

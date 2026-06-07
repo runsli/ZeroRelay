@@ -1,6 +1,7 @@
 package app.zerorelay.data.crypto
 
 import android.util.Base64
+import app.zerorelay.data.error.DataError
 import java.security.SecureRandom
 
 /**
@@ -12,7 +13,7 @@ object MessagePadding {
 
     fun pad(plaintext: String): String {
         val content = plaintext.toByteArray(Charsets.UTF_8)
-        require(content.size <= MAX_CONTENT_BYTES) { "消息过长" }
+        if (content.size > MAX_CONTENT_BYTES) throw DataError.MessageTooLong
         val totalBlocks = ((content.size + 5 + BLOCK_SIZE - 1) / BLOCK_SIZE).coerceAtLeast(1)
         val out = ByteArray(totalBlocks * BLOCK_SIZE)
         out[0] = 0x01
