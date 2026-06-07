@@ -5,9 +5,12 @@ import app.zerorelay.data.local.ConversationStore
 import app.zerorelay.data.local.DetachedSessionStore
 import app.zerorelay.data.local.MessageStore
 import app.zerorelay.data.local.UserPreferences
+import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
+import app.zerorelay.data.model.Contact
+import app.zerorelay.data.model.Identity
 import app.zerorelay.service.RelayForegroundService
 import app.zerorelay.ui.notification.ActiveChatTracker
 import app.zerorelay.ui.notification.MessageNotificationController
@@ -257,6 +260,26 @@ class RelayMessagingHub private constructor(context: Context) {
 
     fun registerConversation(session: ChatSession) {
         conversationStore.registerSession(session)
+    }
+
+    fun registerContactConversation(identity: Identity, contact: Contact) {
+        conversationStore.registerContact(identity, contact)
+    }
+
+    fun registerGroupConversation(group: ChatGroup) {
+        conversationStore.registerGroup(group)
+    }
+
+    fun syncConversationPeers(identity: Identity, contacts: List<Contact>, groups: List<ChatGroup>) {
+        conversationStore.syncPeers(identity, contacts, groups)
+    }
+
+    fun unregisterContactConversation(identity: Identity, contact: Contact) {
+        conversationStore.unregisterContact(identity, contact)
+    }
+
+    fun unregisterGroupConversation(group: ChatGroup) {
+        conversationStore.unregisterGroup(group)
     }
 
     fun updateConversationOnMessage(msg: ChatMessage, incrementUnread: Boolean) {

@@ -1,9 +1,13 @@
 package app.zerorelay.data.local
 
 import android.content.Context
+import app.zerorelay.data.crypto.IdentityCrypto
+import app.zerorelay.data.model.ChatGroup
 import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
+import app.zerorelay.data.model.Contact
+import app.zerorelay.data.model.Identity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +30,96 @@ class ConversationStore(context: Context) {
                 session.toConversationEntity(existing).copy(unreadCount = 0),
             )
         }
+    }
+
+    fun registerContact(identity: Identity, contact: Contact) {
+        scope.launch {
+            upsertContactConversation(identity, contact)
+        }
+    }
+
+    fun registerGroup(group: ChatGroup) {
+        scope.launch {
+            upsertGroupConversation(group)
+        }
+    }
+
+    fun syncPeers(identity: Identity, contacts: List<Contact>, groups: List<ChatGroup>) {
+        scope.launch {
+            contacts.forEach { upsertContactConversation(identity, it) }
+            groups.forEach { upsertGroupConversation(it) }
+        }
+    }
+
+    fun unregisterContact(identity: Identity, contact: Contact) {
+        scope.launch {
+            val roomId = roomIdForContact(identity, contact)
+            conversationDao.deleteByRoom(roomId)
+        }
+    }
+
+    fun unregisterGroup(group: ChatGroup) {
+        scope.launch {
+            conversationDao.deleteByRoom(group.roomId)
+        }
+    }
+
+    private suspend fun upsertContactConversation(identity: Identity, contact: Contact) {
+        val roomId = roomIdForContact(identity, contact)
+        val existing = conversationDao.get(roomId)
+        if (existing != null) {
+            conversationDao.upsert(
+                existing.copy(
+                    displayName = contact.displayName,
+                    peerContactId = contact.id,
+                    kind = ChatKind.Direct.name,
+                ),
+            )
+            return
+        }
+        conversationDao.upsert(
+            ConversationEntity(
+                roomId = roomId,
+                displayName = contact.displayName,
+                peerContactId = contact.id,
+                kind = ChatKind.Direct.name,
+                lastMessagePreview = "",
+                lastMessageTimestamp = contact.addedAt,
+                lastMessageIsMine = false,
+                unreadCount = 0,
+            ),
+        )
+    }
+
+    private suspend fun upsertGroupConversation(group: ChatGroup) {
+        val existing = conversationDao.get(group.roomId)
+        if (existing != null) {
+            conversationDao.upsert(
+                existing.copy(
+                    displayName = group.displayName,
+                    peerContactId = group.id,
+                    kind = ChatKind.Group.name,
+                ),
+            )
+            return
+        }
+        conversationDao.upsert(
+            ConversationEntity(
+                roomId = group.roomId,
+                displayName = group.displayName,
+                peerContactId = group.id,
+                kind = ChatKind.Group.name,
+                lastMessagePreview = "",
+                lastMessageTimestamp = group.createdAt,
+                lastMessageIsMine = false,
+                unreadCount = 0,
+            ),
+        )
+    }
+
+    private fun roomIdForContact(identity: Identity, contact: Contact): String {
+        val peerPublicKey = IdentityCrypto.decodePublicKey(contact.publicKeyBase64)
+        return IdentityCrypto.deriveRoomId(identity.publicKey, peerPublicKey)
     }
 
     fun updateOnMessage(message: ChatMessage, incrementUnread: Boolean) {

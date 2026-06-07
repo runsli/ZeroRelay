@@ -203,9 +203,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     init {
         RelaySessionCoordinator.start(application)
         viewModelScope.launch {
-            hub.backfillConversationsFromMessages()
-        }
-        viewModelScope.launch {
             hub.conversationStore.observeAll().collect { entities ->
                 conversationEntities = entities
                 _uiState.update { state ->
@@ -214,18 +211,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         viewModelScope.launch {
+            hub.backfillConversationsFromMessages()
             val identity = identityStore.getOrCreateIdentity()
             val server = prefs.getServerUrl().orEmpty()
             val contacts = identityStore.getContacts()
+            val groups = identityStore.getGroups()
             val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
             val showOnboarding = !prefs.isOnboardingDismissed() && isSetupIncomplete(contacts)
+            hub.syncConversationPeers(identity, contacts, groups)
             _uiState.update {
                 withSetupFlags(
                     it.copy(
                         identity = identity,
                         serverUrl = server,
                         contacts = contacts,
-                        groups = identityStore.getGroups(),
+                        groups = groups,
                         myQrPayload = qr,
                         useDynamicColor = prefs.getUseDynamicColor(),
                         allowScreenshots = prefs.getAllowScreenshots(),
@@ -433,6 +433,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val name = _uiState.value.createGroupName
         return try {
             val group = identityStore.createGroup(name, _uiState.value.createGroupMemberIds.toList())
+            _uiState.value.identity?.let { hub.registerGroupConversation(group) }
             refreshGroups()
             _uiState.update {
                 it.copy(
@@ -515,7 +516,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun addContactPayload(payload: ContactExchange.Payload): Boolean {
         return try {
-            identityStore.addContactFromPayload(payload)
+            val identity = identityStore.getOrCreateIdentity()
+            val contact = identityStore.addContactFromPayload(payload)
+            hub.registerContactConversation(identity, contact)
             refreshContacts()
             _uiState.update { it.copy(showPasteDialog = false, pasteText = "", error = null) }
             true
@@ -532,11 +535,18 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun deleteContact(id: String) {
+        val identity = _uiState.value.identity
+        identityStore.findContact(id)?.let { contact ->
+            identity?.let { hub.unregisterContactConversation(it, contact) }
+        }
         identityStore.deleteContact(id)
         refreshContacts()
     }
 
     fun deleteGroup(id: String) {
+        identityStore.getGroups().find { it.id == id }?.let { group ->
+            hub.unregisterGroupConversation(group)
+        }
         identityStore.deleteGroup(id)
         refreshGroups()
     }
@@ -713,20 +723,23 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun reloadAccountUi() {
+    private suspend fun reloadAccountUi() {
+        hub.backfillConversationsFromMessages()
         val identity = identityStore.getOrCreateIdentity()
         val server = prefs.getServerUrl().orEmpty()
         val contacts = identityStore.getContacts()
         val qr = ContactExchange.encodePayload(identity.publicKeyBase64, null)
+        val groups = identityStore.getGroups()
+        hub.syncConversationPeers(identity, contacts, groups)
         _uiState.update {
             withSetupFlags(
                 it.copy(
                     identity = identity,
                     serverUrl = server,
                     contacts = contacts,
-                    groups = identityStore.getGroups(),
+                    groups = groups,
                     myQrPayload = qr,
-                    conversations = mapConversationRows(contacts, identityStore.getGroups()),
+                    conversations = mapConversationRows(contacts, groups),
                     serverCheckOk = if (prefs.isServerTested()) true else null,
                 ),
             )
@@ -923,8 +936,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private fun joinGroupAndCreateSession(payload: GroupExchange.InvitePayload): ChatSession {
         applyServerFromInvite(payload.serverUrl)
         val group = identityStore.joinGroupFromInvite(payload)
-        refreshGroups()
         val identity = _uiState.value.identity ?: error(appStr(R.string.error_identity_not_ready))
+        hub.registerGroupConversation(group)
+        refreshGroups()
         return SessionFactory.createForGroup(_uiState.value.serverUrl, identity, group)
     }
 
