@@ -38,6 +38,15 @@ base64 -w0 android/zerorelay-release.jks
 
 切勿将 `.jks` 或 `keystore.properties` 提交到 Git。
 
+**Release 失败 `base64: invalid input`：** Secret 内容无效。在存有 `.jks` 的电脑上重新生成并**整行**粘贴（不要加引号）：
+
+```bash
+./scripts/print-github-keystore-secret.sh /path/to/zerorelay-release.jks --raw > /tmp/ks.b64
+./scripts/verify-keystore-base64.sh /tmp/ks.b64   # 应输出 ok
+```
+
+然后更新 **Settings → Secrets → ANDROID_KEYSTORE_BASE64**，再 **Actions → Android GitHub Release → Run workflow**（tag `v1.0.0`）。
+
 ## 发布新版本
 
 1. 更新并提交版本号：

@@ -15,6 +15,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: android-github-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
   cancel-in-progress: false
@@ -80,13 +83,23 @@ jobs:
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > android/zerorelay-release.jks
-          chmod 600 android/zerorelay-release.jks
-          if [[ ! -s android/zerorelay-release.jks ]]; then
-            echo "::error::Decoded keystore is empty or ANDROID_KEYSTORE_BASE64 is invalid."
-            echo "Regenerate: scripts/print-github-keystore-secret.sh path/to/release.jks"
+          clean="$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]"'\''')"
+          if [[ -z "$clean" ]]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is empty"
             exit 1
           fi
+          if ! printf '%s' "$clean" | openssl base64 -d -A -out android/zerorelay-release.jks 2>/dev/null; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not valid base64."
+            echo "On a machine with your .jks: scripts/print-github-keystore-secret.sh path/to/release.jks"
+            echo "Verify locally: paste into file && scripts/verify-keystore-base64.sh file"
+            exit 1
+          fi
+          chmod 600 android/zerorelay-release.jks
+          if [[ ! -s android/zerorelay-release.jks ]]; then
+            echo "::error::Decoded keystore is empty."
+            exit 1
+          fi
+          echo "Decoded keystore ($(wc -c < android/zerorelay-release.jks | tr -d ' ') bytes)"
 
       - name: Resolve version from tag
         run: |

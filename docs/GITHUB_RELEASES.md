@@ -32,6 +32,15 @@ base64 -w0 android/zerorelay-release.jks
 
 Never commit `.jks` or `keystore.properties` to Git.
 
+**If release fails with `base64: invalid input`:** the secret is malformed. Regenerate on a machine that has your `.jks` (single line, no quotes):
+
+```bash
+./scripts/print-github-keystore-secret.sh /path/to/zerorelay-release.jks --raw > /tmp/ks.b64
+./scripts/verify-keystore-base64.sh /tmp/ks.b64   # should print ok
+```
+
+Update **Settings → Secrets → ANDROID_KEYSTORE_BASE64**, then **Actions → Android GitHub Release → Run workflow** (tag `v1.0.0`).
+
 ## Publish a version
 
 1. Bump committed version:
