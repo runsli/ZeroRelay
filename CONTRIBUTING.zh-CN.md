@@ -42,6 +42,25 @@ ZERO_RELAY_SERVER=http://127.0.0.1:8787 npm run test:interop
 cd server && npm ci && npm run check
 ```
 
+## 本地编译 Android
+
+JDK 17+（推荐 21，与 CI 一致）。安装 Android SDK API 37，或在 `android/local.properties` 中设置 `sdk.dir`。
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+提 PR 前可选：`./gradlew :app:lintDebug`（与 **Android PR check** CI 相同）。
+
+## 协议与加密变更
+
+若修改消息格式、中继 HTTP/WebSocket 行为、常量，或 CLI/Android/server 共用的加密逻辑：
+
+1. 更新 [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md) 与 [docs/PROTOCOL.md](docs/PROTOCOL.md)
+2. 需要跨端保持一致时，扩展 [scripts/interop-test.js](scripts/interop-test.js)
+3. 在本地中继上运行 `npm run test:interop`（见上文）
+
 ## CI 检查（Pull Request）
 
 | 检查 | 触发条件 |
@@ -72,6 +91,10 @@ cd server && npm ci && npm run check
 - `docs:` — 仅文档
 
 适用时请写 `Closes #NN` 关联 issue。
+
+## Pull Request
+
+请使用 [PR 模板](.github/pull_request_template.md)填写测试计划、协议/加密影响、文案 checklist 与 CI 对应关系。
 
 ## 更多文档
 

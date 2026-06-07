@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an improvement or new capability
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and proposed solution. Protocol or crypto changes may need updates to
+        [docs/PROTOCOL.md](../../docs/PROTOCOL.md) and interop tests — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Android app
+        - CLI
+        - Relay server
+        - Documentation / DX
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What pain point does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Likely impact
+      options:
+        - label: Protocol or wire format
+        - label: Crypto / key handling
+        - label: Android user-facing strings (EN + ZH)
+        - label: Relay deployment or ops

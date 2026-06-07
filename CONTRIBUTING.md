@@ -42,6 +42,25 @@ Default server URL is `http://127.0.0.1:8787` if `ZERO_RELAY_SERVER` is unset.
 cd server && npm ci && npm run check
 ```
 
+## Build Android locally
+
+JDK 17+ (21 recommended for parity with CI). Install Android SDK API 37 or set `sdk.dir` in `android/local.properties`.
+
+```bash
+cd android
+./gradlew :app:assembleDebug
+```
+
+Optional before opening a PR: `./gradlew :app:lintDebug` (same as **Android PR check** CI).
+
+## Protocol and crypto changes
+
+If you change message formats, relay HTTP/WebSocket behavior, constants, or crypto used by CLI, Android, or server:
+
+1. Update [docs/PROTOCOL.md](docs/PROTOCOL.md) and [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md)
+2. Extend [scripts/interop-test.js](scripts/interop-test.js) when behavior should stay in sync across clients
+3. Run `npm run test:interop` with a local relay (see above)
+
 ## CI checks (pull requests)
 
 | Check | When it runs |
@@ -72,6 +91,10 @@ Use concise prefixes:
 - `docs:` — documentation only
 
 Reference issues with `Closes #NN` when applicable.
+
+## Pull requests
+
+Use the [pull request template](.github/pull_request_template.md) — test plan, protocol/crypto impact, i18n checklist, and CI mapping.
 
 ## More documentation
 

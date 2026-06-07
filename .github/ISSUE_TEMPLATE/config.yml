@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Contributing guide
+    url: https://github.com/runsli/ZeroRelay/blob/main/CONTRIBUTING.md
+    about: Environment setup, local tests, commit style, and CI checks
