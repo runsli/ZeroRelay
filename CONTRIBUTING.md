@@ -8,9 +8,18 @@ Thank you for helping improve ZeroRelay. This guide covers the essentials for lo
 
 | Component | Version |
 |-----------|---------|
-| Node.js | 22 LTS (CLI + server + interop tests) |
+| Node.js | **22 LTS** for CLI, server, and interop tests (`engines` in root and `server/package.json`; `.nvmrc` pins 22) |
 | JDK | 21 (Android CI; 17+ for local Gradle) |
 | Android SDK | API 37 (see `android/app/build.gradle.kts`) |
+
+Use Node 22 from the repo root: `nvm use`, `fnm use`, or install [nodejs.org](https://nodejs.org/) 22 LTS.
+
+## Dependency updates
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot) opens weekly PRs for:
+
+- npm — repo root and `server/`
+- Gradle — `android/` (version catalog in `android/gradle/libs.versions.toml`)
 
 ## Run interop tests locally
 

@@ -80,10 +80,10 @@
 
 | 目标 | 说明 |
 |------|------|
-| 本地中继 | `cd server && npm install && npm start` |
+| 本地中继 | Node.js **22+** → `cd server && npm install && npm start` |
 | Android Debug | JDK 17+（推荐 26）、SDK 37 → `cd android && ./gradlew assembleDebug` |
 | Android Release | [docs/GITHUB_RELEASES.zh-CN.md](docs/GITHUB_RELEASES.zh-CN.md) · [English](docs/GITHUB_RELEASES.md) |
-| CLI | `./scripts/cli-setup.sh` · `zerorelay help` |
+| CLI | Node.js **22+** → `./scripts/cli-setup.sh` · `zerorelay help` |
 | 协议 / 互操作测试 | [docs/PROTOCOL.zh-CN.md](docs/PROTOCOL.zh-CN.md) · [English](docs/PROTOCOL.md) · `npm run test:interop` |
 | 全部文档索引 | [docs/README.zh-CN.md](docs/README.zh-CN.md) |
 

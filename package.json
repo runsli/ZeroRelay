@@ -7,7 +7,7 @@
     "zr": "./cli.js"
   },
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.0.0"
   },
   "scripts": {
     "setup:cli": "bash scripts/cli-setup.sh",

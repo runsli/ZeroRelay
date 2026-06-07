@@ -80,10 +80,10 @@ Details: [docs/SECURITY.md](docs/SECURITY.md) · [docs/PROTOCOL.md](docs/PROTOCO
 
 | Goal | Where to look |
 |------|----------------|
-| Relay (local) | `cd server && npm install && npm start` → [server/README.md](server/README.md) · [中文](server/README.zh-CN.md) |
+| Relay (local) | Node.js **22+** → `cd server && npm install && npm start` · [server/README.md](server/README.md) · [中文](server/README.zh-CN.md) |
 | Android (Debug) | JDK 17+ (26 recommended), SDK 37 → `cd android && ./gradlew assembleDebug` |
 | Android (Release APK) | [docs/GITHUB_RELEASES.md](docs/GITHUB_RELEASES.md) · [中文](docs/GITHUB_RELEASES.zh-CN.md) |
-| CLI | `./scripts/cli-setup.sh` · `zerorelay help` |
+| CLI | Node.js **22+** → `./scripts/cli-setup.sh` · `zerorelay help` |
 | Protocol / interop tests | [docs/PROTOCOL.md](docs/PROTOCOL.md) · [中文](docs/PROTOCOL.zh-CN.md) · `npm run test:interop` |
 | All docs (bilingual index) | [docs/README.md](docs/README.md) |
 

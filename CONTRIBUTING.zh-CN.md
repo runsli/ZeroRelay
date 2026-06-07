@@ -8,9 +8,18 @@
 
 | 组件 | 版本 |
 |------|------|
-| Node.js | 22 LTS（CLI、server、interop 测试） |
+| Node.js | **22 LTS**（CLI、server、interop 测试；根目录与 `server/package.json` 的 `engines`；`.nvmrc` 固定为 22） |
 | JDK | 21（Android CI；本地 Gradle 17+ 亦可） |
 | Android SDK | API 37（见 `android/app/build.gradle.kts`） |
+
+在仓库根目录使用 Node 22：`nvm use`、`fnm use`，或安装 [nodejs.org](https://nodejs.org/) 22 LTS。
+
+## 依赖更新
+
+[Dependabot](https://docs.github.com/en/code-security/dependabot) 每周为以下生态开 PR：
+
+- npm — 仓库根目录与 `server/`
+- Gradle — `android/`（版本目录 `android/gradle/libs.versions.toml`）
 
 ## 本地运行 interop 测试
 

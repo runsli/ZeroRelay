@@ -9,13 +9,13 @@ LINK_GLOBAL=1
 [[ "${1:-}" == "--no-link" ]] && LINK_GLOBAL=0
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "[-] 未找到 node。请安装 Node.js 20.19+：https://nodejs.org/" >&2
+  echo "[-] 未找到 node。请安装 Node.js 22+：https://nodejs.org/" >&2
   exit 1
 fi
 
 NODE_MAJOR="$(node -p "Number(process.versions.node.split('.')[0])")"
-if [[ "$NODE_MAJOR" -lt 18 ]]; then
-  echo "[-] 需要 Node.js >= 18，当前: $(node -v)" >&2
+if [[ "$NODE_MAJOR" -lt 22 ]]; then
+  echo "[-] 需要 Node.js >= 22，当前: $(node -v)" >&2
   exit 1
 fi
 
