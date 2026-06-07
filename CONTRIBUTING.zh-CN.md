@@ -119,6 +119,7 @@ cd android
 
 ## 更多文档
 
+- [docs/MAINTAINABILITY.zh-CN.md](docs/MAINTAINABILITY.zh-CN.md) — 已完成路线图（#25–#36）、CI 矩阵、后续待办
 - [docs/README.zh-CN.md](docs/README.zh-CN.md) — 双语文档索引
 - [docs/SECURITY.zh-CN.md](docs/SECURITY.zh-CN.md) — 安全与备份
 - [README.zh-CN.md](README.zh-CN.md) — 编译说明

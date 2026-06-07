@@ -8,6 +8,7 @@
 | Deploy relay | [DEPLOYMENT.md](DEPLOYMENT.md) | [DEPLOYMENT.zh-CN.md](DEPLOYMENT.zh-CN.md) |
 | Android GitHub Releases | [GITHUB_RELEASES.md](GITHUB_RELEASES.md) | [GITHUB_RELEASES.zh-CN.md](GITHUB_RELEASES.zh-CN.md) |
 | Protocol | [PROTOCOL.md](PROTOCOL.md) | [PROTOCOL.zh-CN.md](PROTOCOL.zh-CN.md) |
+| Maintainability roadmap | [MAINTAINABILITY.md](MAINTAINABILITY.md) | [MAINTAINABILITY.zh-CN.md](MAINTAINABILITY.zh-CN.md) |
 | Security | [SECURITY.md](SECURITY.md) | [SECURITY.zh-CN.md](SECURITY.zh-CN.md) |
 | F-Droid | [F-DROID.md](F-DROID.md) | [F-DROID.zh-CN.md](F-DROID.zh-CN.md) |
 | Server / Deploy button | [server/README.md](../server/README.md) | [server/README.zh-CN.md](../server/README.zh-CN.md) |

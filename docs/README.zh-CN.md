@@ -8,6 +8,7 @@
 | 部署中继 | [DEPLOYMENT.md](DEPLOYMENT.md) | [DEPLOYMENT.zh-CN.md](DEPLOYMENT.zh-CN.md) |
 | Android GitHub Releases | [GITHUB_RELEASES.md](GITHUB_RELEASES.md) | [GITHUB_RELEASES.zh-CN.md](GITHUB_RELEASES.zh-CN.md) |
 | 协议 | [PROTOCOL.md](PROTOCOL.md) | [PROTOCOL.zh-CN.md](PROTOCOL.zh-CN.md) |
+| 可维护性路线图 | [MAINTAINABILITY.md](MAINTAINABILITY.md) | [MAINTAINABILITY.zh-CN.md](MAINTAINABILITY.zh-CN.md) |
 | 安全 | [SECURITY.md](SECURITY.md) | [SECURITY.zh-CN.md](SECURITY.zh-CN.md) |
 | F-Droid | [F-DROID.md](F-DROID.md) | [F-DROID.zh-CN.md](F-DROID.zh-CN.md) |
 | 服务端 / Deploy 按钮 | [server/README.md](../server/README.md) | [server/README.zh-CN.md](../server/README.zh-CN.md) |

@@ -119,6 +119,7 @@ Use the [pull request template](.github/pull_request_template.md) — test plan,
 
 ## More documentation
 
+- [docs/MAINTAINABILITY.md](docs/MAINTAINABILITY.md) — completed roadmap (#25–#36), CI matrix, future backlog
 - [docs/README.md](docs/README.md) — full bilingual doc index
 - [docs/SECURITY.md](docs/SECURITY.md) — security and backup practices
 - [README.md](README.md) — build from source table
