@@ -10,6 +10,9 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(message: MessageEntity)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(message: MessageEntity)
+
     @Query("SELECT * FROM messages WHERE roomId = :roomId ORDER BY timestamp ASC")
     suspend fun getByRoom(roomId: String): List<MessageEntity>
 

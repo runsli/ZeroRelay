@@ -265,6 +265,10 @@
     <string name="chat_snackbar_verify_before_send">请先与对方核对安全码并标记为已验证，再发送消息</string>
     <string name="chat_snackbar_send_failed">消息发送失败</string>
     <string name="chat_snackbar_peer_verified">已标记为已验证联系人</string>
+    <string name="chat_message_status_sending">发送中</string>
+    <string name="chat_message_status_sent">已发送</string>
+    <string name="chat_message_status_failed">发送失败</string>
+    <string name="chat_message_tap_retry">点击重试</string>
 
     <!-- Adaptive (tablet / foldable) -->
     <string name="adaptive_select_chat">选择联系人或群聊开始对话</string>

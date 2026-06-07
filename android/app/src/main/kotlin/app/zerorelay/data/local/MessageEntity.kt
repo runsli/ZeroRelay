@@ -3,6 +3,7 @@ package app.zerorelay.data.local
 import androidx.room.Entity
 import androidx.room.Index
 import app.zerorelay.data.model.ChatMessage
+import app.zerorelay.data.model.DeliveryStatus
 
 @Entity(
     tableName = "messages",
@@ -17,6 +18,7 @@ data class MessageEntity(
     val senderId: String,
     val isMine: Boolean,
     val legacyDecrypt: Boolean = false,
+    val deliveryStatus: String = DeliveryStatus.SENT.name,
 )
 
 fun ChatMessage.toEntity(): MessageEntity =
@@ -28,6 +30,7 @@ fun ChatMessage.toEntity(): MessageEntity =
         senderId = senderId,
         isMine = isMine,
         legacyDecrypt = legacyDecrypt,
+        deliveryStatus = deliveryStatus.name,
     )
 
 fun MessageEntity.toChatMessage(): ChatMessage =
@@ -39,4 +42,6 @@ fun MessageEntity.toChatMessage(): ChatMessage =
         senderId = senderId,
         isMine = isMine,
         legacyDecrypt = legacyDecrypt,
+        deliveryStatus = runCatching { DeliveryStatus.valueOf(deliveryStatus) }
+            .getOrDefault(DeliveryStatus.SENT),
     )

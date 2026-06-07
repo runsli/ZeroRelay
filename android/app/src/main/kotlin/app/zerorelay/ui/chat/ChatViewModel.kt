@@ -12,13 +12,16 @@ import app.zerorelay.data.model.ChatKind
 import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
+import app.zerorelay.data.model.DeliveryStatus
 import app.zerorelay.ui.snackbar.AppSnackbarBus
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 data class ChatUiState(
     val roomId: String = "",
@@ -42,6 +45,11 @@ class ChatViewModel(
 
     private var boundSession: ChatSession? = null
     private var connectionJob: Job? = null
+    private val sendJobs = mutableMapOf<String, Job>()
+
+    companion object {
+        private const val SEND_TIMEOUT_MS = 15_000L
+    }
 
     private fun appStr(@StringRes resId: Int, vararg args: Any): String =
         getApplication<Application>().getString(resId, *args)
@@ -52,8 +60,13 @@ class ChatViewModel(
                 val room = boundSession?.roomId ?: return@collect
                 if (msg.roomId != room) return@collect
                 _uiState.update { state ->
-                    if (state.messages.any { it.id == msg.id }) state
-                    else state.copy(messages = state.messages + msg)
+                    val index = state.messages.indexOfFirst { it.id == msg.id }
+                    val messages = if (index >= 0) {
+                        state.messages.toMutableList().apply { this[index] = msg }
+                    } else {
+                        state.messages + msg
+                    }
+                    state.copy(messages = messages)
                 }
             }
         }
@@ -77,9 +90,15 @@ class ChatViewModel(
         viewModelScope.launch {
             val identity = identityStore.getOrCreateIdentity()
             val senderId = IdentityCrypto.senderIdFromPublicKey(identity.publicKey)
-            val persisted = hub.loadPersistedMessages(session.roomId)
+            val rawPersisted = hub.loadPersistedMessages(session.roomId)
+            val persisted = rawPersisted.map(::normalizeStaleSending)
             if (persisted.isNotEmpty()) {
                 hub.seedMessages(session.roomId, persisted)
+                rawPersisted.zip(persisted).forEach { (original, fixed) ->
+                    if (original.deliveryStatus != fixed.deliveryStatus) {
+                        hub.upsertMessage(fixed)
+                    }
+                }
             }
             if (repository.isInRoom(session.roomId)) {
                 val conn = hub.connectionFor(session.roomId).value
@@ -134,6 +153,8 @@ class ChatViewModel(
     /** 用户明确退出聊天：断开该房间中继；本地历史保留在加密数据库中。 */
     fun leaveChat() {
         val room = boundSession?.roomId ?: return
+        sendJobs.values.forEach { it.cancel() }
+        sendJobs.clear()
         boundSession = null
         hub.leaveRoom(room)
         hub.clearMessages(room)
@@ -161,18 +182,67 @@ class ChatViewModel(
         val content = text.trim()
         if (content.isEmpty()) return
         val session = boundSession ?: return
-        val repository = hub.repositoryFor(session.roomId) ?: return
+        if (hub.repositoryFor(session.roomId) == null) return
         if (_uiState.value.peerNeedsVerification) {
             AppSnackbarBus.show(appStr(R.string.chat_snackbar_verify_before_send))
             return
         }
-        viewModelScope.launch {
-            val ok = repository.sendMessage(content)
-            if (!ok) {
-                AppSnackbarBus.show(appStr(R.string.chat_snackbar_send_failed))
+        val senderId = _uiState.value.senderId.ifBlank {
+            identityStore.getOrCreateIdentity().let { IdentityCrypto.senderIdFromPublicKey(it.publicKey) }
+        }
+        val now = System.currentTimeMillis()
+        val messageId = "local-$now"
+        val outgoing = ChatMessage(
+            id = messageId,
+            roomId = session.roomId,
+            content = content,
+            timestamp = now,
+            senderId = senderId,
+            isMine = true,
+            deliveryStatus = DeliveryStatus.SENDING,
+        )
+        hub.upsertMessage(outgoing)
+        dispatchSend(session.roomId, messageId, content)
+    }
+
+    fun retryFailedMessage(messageId: String) {
+        val session = boundSession ?: return
+        val message = _uiState.value.messages.find { it.id == messageId } ?: return
+        if (!message.isMine || message.deliveryStatus != DeliveryStatus.FAILED) return
+        if (hub.repositoryFor(session.roomId) == null) return
+        hub.updateDeliveryStatus(session.roomId, messageId, DeliveryStatus.SENDING)
+        dispatchSend(session.roomId, messageId, message.content)
+    }
+
+    private fun dispatchSend(roomId: String, messageId: String, content: String) {
+        sendJobs.remove(messageId)?.cancel()
+        sendJobs[messageId] = viewModelScope.launch {
+            val repository = hub.repositoryFor(roomId) ?: run {
+                hub.updateDeliveryStatus(roomId, messageId, DeliveryStatus.FAILED)
+                return@launch
             }
+            val ok = try {
+                withTimeout(SEND_TIMEOUT_MS) {
+                    repository.sendMessage(content)
+                }
+            } catch (_: TimeoutCancellationException) {
+                false
+            }
+            hub.updateDeliveryStatus(
+                roomId,
+                messageId,
+                if (ok) DeliveryStatus.SENT else DeliveryStatus.FAILED,
+            )
+            sendJobs.remove(messageId)
         }
     }
+
+    private fun normalizeStaleSending(message: ChatMessage): ChatMessage =
+        if (message.isMine && message.deliveryStatus == DeliveryStatus.SENDING) {
+            message.copy(deliveryStatus = DeliveryStatus.FAILED)
+        } else {
+            message
+        }
 
     fun retry() {
         val session = boundSession ?: return
@@ -221,6 +291,8 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
+        sendJobs.values.forEach { it.cancel() }
+        sendJobs.clear()
         detachUi()
         super.onCleared()
     }

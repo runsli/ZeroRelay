@@ -1,5 +1,6 @@
 package app.zerorelay.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -17,9 +23,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.zerorelay.R
 import app.zerorelay.data.model.ChatMessage
+import app.zerorelay.data.model.DeliveryStatus
 import app.zerorelay.ui.theme.BubbleShapeMe
 import app.zerorelay.ui.theme.BubbleShapeOther
 
@@ -43,22 +54,36 @@ fun buildMessageRows(messages: List<ChatMessage>): List<MessageRowUi> =
 @Composable
 fun ChatMessageRow(
     ui: MessageRowUi,
+    onRetryFailed: ((messageId: String) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val message = ui.message
     val cs = MaterialTheme.colorScheme
 
     if (message.isMine) {
+        val failed = message.deliveryStatus == DeliveryStatus.FAILED
+        val retryLabel = stringResource(R.string.chat_message_tap_retry)
         Row(
             modifier = modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.Bottom,
         ) {
+            OutgoingDeliveryStatus(
+                status = message.deliveryStatus,
+                modifier = Modifier.padding(end = 6.dp, bottom = 10.dp),
+            )
             MessageBubble(
                 text = message.content,
                 time = message.formattedTime,
-                background = cs.primary,
-                contentColor = cs.onPrimary,
+                background = if (failed) cs.errorContainer else cs.primary,
+                contentColor = if (failed) cs.onErrorContainer else cs.onPrimary,
                 shape = BubbleShapeMe,
+                modifier = if (failed && onRetryFailed != null) {
+                    Modifier.clickable { onRetryFailed(message.id) }
+                        .semantics { contentDescription = retryLabel }
+                } else {
+                    Modifier
+                },
             )
         }
     } else {
@@ -104,14 +129,49 @@ fun ChatMessageRow(
 }
 
 @Composable
+private fun OutgoingDeliveryStatus(
+    status: DeliveryStatus,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    when (status) {
+        DeliveryStatus.SENDING -> {
+            CircularProgressIndicator(
+                modifier = modifier.size(16.dp),
+                strokeWidth = 2.dp,
+                color = cs.onSurfaceVariant,
+            )
+        }
+        DeliveryStatus.SENT -> {
+            Icon(
+                imageVector = Icons.Outlined.Check,
+                contentDescription = stringResource(R.string.chat_message_status_sent),
+                modifier = modifier.size(16.dp),
+                tint = cs.onSurfaceVariant.copy(alpha = 0.7f),
+            )
+        }
+        DeliveryStatus.FAILED -> {
+            Icon(
+                imageVector = Icons.Outlined.ErrorOutline,
+                contentDescription = stringResource(R.string.chat_message_status_failed),
+                modifier = modifier.size(18.dp),
+                tint = cs.error,
+            )
+        }
+    }
+}
+
+@Composable
 private fun MessageBubble(
     text: String,
     time: String?,
     background: androidx.compose.ui.graphics.Color,
     contentColor: androidx.compose.ui.graphics.Color,
     shape: androidx.compose.foundation.shape.RoundedCornerShape,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
+        modifier = modifier,
         color = background,
         shape = shape,
         tonalElevation = 1.dp,

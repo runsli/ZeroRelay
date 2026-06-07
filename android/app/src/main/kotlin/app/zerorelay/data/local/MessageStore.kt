@@ -15,7 +15,7 @@ class MessageStore(context: Context) {
     fun persist(message: ChatMessage) {
         if (message.roomId.isBlank()) return
         scope.launch {
-            dao.insert(message.toEntity())
+            dao.upsert(message.toEntity())
         }
     }
 

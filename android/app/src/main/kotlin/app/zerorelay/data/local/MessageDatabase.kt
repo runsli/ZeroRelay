@@ -8,7 +8,7 @@ import net.sqlcipher.database.SupportFactory
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class MessageDatabase : RoomDatabase() {
@@ -33,7 +33,7 @@ abstract class MessageDatabase : RoomDatabase() {
             val factory = SupportFactory(MessageDatabasePassphrase.get(context))
             return Room.databaseBuilder(context, MessageDatabase::class.java, DB_NAME)
                 .openHelperFactory(factory)
-                .addMigrations(MESSAGE_DB_MIGRATION_1_2)
+                .addMigrations(MESSAGE_DB_MIGRATION_1_2, MESSAGE_DB_MIGRATION_2_3)
                 .build()
         }
     }

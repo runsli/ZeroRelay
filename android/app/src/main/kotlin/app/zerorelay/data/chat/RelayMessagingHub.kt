@@ -10,6 +10,7 @@ import app.zerorelay.data.model.ChatMessage
 import app.zerorelay.data.model.ChatSession
 import app.zerorelay.data.model.ConnectionState
 import app.zerorelay.data.model.Contact
+import app.zerorelay.data.model.DeliveryStatus
 import app.zerorelay.data.model.Identity
 import app.zerorelay.service.RelayForegroundService
 import app.zerorelay.ui.notification.ActiveChatTracker
@@ -231,8 +232,36 @@ class RelayMessagingHub private constructor(context: Context) {
         if (list.none { it.id == msg.id }) {
             list.add(msg)
             _roomMessageEvents.tryEmit(msg)
+            messageStore.persist(msg)
         }
+    }
+
+    fun upsertMessage(msg: ChatMessage) {
+        if (msg.roomId.isBlank()) return
+        val list = messagesByRoom.getOrPut(msg.roomId) { CopyOnWriteArrayList() }
+        val index = list.indexOfFirst { it.id == msg.id }
+        if (index >= 0) {
+            list.removeAt(index)
+            list.add(index, msg)
+        } else {
+            list.add(msg)
+        }
+        _roomMessageEvents.tryEmit(msg)
         messageStore.persist(msg)
+    }
+
+    fun updateDeliveryStatus(roomId: String, messageId: String, status: DeliveryStatus) {
+        val list = messagesByRoom[roomId] ?: return
+        val index = list.indexOfFirst { it.id == messageId }
+        if (index < 0) return
+        val updated = list[index].copy(deliveryStatus = status)
+        list.removeAt(index)
+        list.add(index, updated)
+        _roomMessageEvents.tryEmit(updated)
+        messageStore.persist(updated)
+        if (status == DeliveryStatus.SENT && updated.isMine) {
+            updateConversationOnMessage(updated, incrementUnread = false)
+        }
     }
 
     fun messagesFor(roomId: String): List<ChatMessage> =

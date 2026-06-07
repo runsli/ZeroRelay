@@ -288,36 +288,15 @@ class ChatRepository(
                     .build()
                 httpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) {
-                        val errBody = response.body?.string().orEmpty()
-                        val detail = runCatching {
-                            JSONObject(errBody).optString("error")
-                        }.getOrNull()?.takeIf { it.isNotBlank() } ?: errBody.take(120)
-                        if (detail.isNotBlank()) {
-                            emitError(R.string.error_relay_send_failed_detail, response.code, detail)
-                        } else {
-                            emitError(R.string.error_relay_send_failed_http, response.code)
-                        }
                         return@withContext false
                     }
                 }
 
                 val fp = fingerprint(encrypted.ciphertext, encrypted.iv, encrypted.tag)
                 pendingFingerprints[fp] = now
-
-                _messages.emit(
-                    ChatMessage(
-                        id = "local-$now",
-                        roomId = room,
-                        content = content,
-                        timestamp = now,
-                        senderId = sender,
-                        isMine = true,
-                    ),
-                )
                 true
             }
-        } catch (e: Exception) {
-            emitError(R.string.error_relay_send_message, throwableDetail(e))
+        } catch (_: Exception) {
             false
         }
     }

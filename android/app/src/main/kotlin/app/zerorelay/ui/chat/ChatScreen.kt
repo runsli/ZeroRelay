@@ -193,7 +193,7 @@ fun ChatScreen(
                     vm.sendMessage(draft)
                     draft = ""
                 },
-                enabled = state.connection == ConnectionState.Connected && !state.peerNeedsVerification,
+                enabled = !state.peerNeedsVerification,
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -276,6 +276,7 @@ fun ChatScreen(
                         items(messageRows, key = { it.message.id }) { row ->
                             ChatMessageRow(
                                 ui = row,
+                                onRetryFailed = vm::retryFailedMessage,
                                 modifier = Modifier.padding(vertical = 2.dp),
                             )
                         }

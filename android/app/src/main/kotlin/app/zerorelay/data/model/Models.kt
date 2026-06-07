@@ -13,6 +13,12 @@ data class EncryptedMessage(
     val sig: String = "",
 )
 
+enum class DeliveryStatus {
+    SENDING,
+    SENT,
+    FAILED,
+}
+
 data class ChatMessage(
     val id: String,
     val roomId: String,
@@ -22,6 +28,7 @@ data class ChatMessage(
     val isMine: Boolean,
     /** 使用静态会话密钥兼容层解密（旧协议） */
     val legacyDecrypt: Boolean = false,
+    val deliveryStatus: DeliveryStatus = DeliveryStatus.SENT,
 ) {
     val formattedTime: String
         get() {
