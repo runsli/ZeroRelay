@@ -101,6 +101,23 @@ jobs:
           fi
           echo "Decoded keystore ($(wc -c < android/zerorelay-release.jks | tr -d ' ') bytes)"
 
+      - name: Verify release keystore credentials
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if ! keytool -list \
+            -keystore android/zerorelay-release.jks \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" \
+            -keypass "${ANDROID_KEY_PASSWORD:-$ANDROID_KEYSTORE_PASSWORD}" >/dev/null 2>&1; then
+            echo "::error::Keystore password or alias does not match ANDROID_* secrets."
+            echo "Local check: export ANDROID_KEYSTORE_PASSWORD=... && ./scripts/verify-release-keystore.sh"
+            exit 1
+          fi
+          echo "ok: keystore credentials verified for alias $ANDROID_KEY_ALIAS"
+
       - name: Resolve version from tag
         run: |
           # shellcheck disable=SC1091
