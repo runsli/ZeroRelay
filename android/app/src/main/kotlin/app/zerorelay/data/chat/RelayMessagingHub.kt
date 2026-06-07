@@ -31,6 +31,11 @@ import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
+data class DetachedEvictionEvent(
+    val displayName: String,
+    val roomId: String,
+)
+
 /** 应用级单例：多房间 relay 连接（最多 K 个后台 detached + 1 个前台 active）。 */
 class RelayMessagingHub private constructor(context: Context) {
     private val appContext = context.applicationContext
@@ -65,6 +70,11 @@ class RelayMessagingHub private constructor(context: Context) {
     private val _roomMessageEvents = MutableSharedFlow<ChatMessage>(extraBufferCapacity = 64)
     val roomMessageEvents: SharedFlow<ChatMessage> = _roomMessageEvents.asSharedFlow()
 
+    private val _detachedEvictionEvents =
+        MutableSharedFlow<DetachedEvictionEvent>(extraBufferCapacity = 4)
+    val detachedEvictionEvents: SharedFlow<DetachedEvictionEvent> =
+        _detachedEvictionEvents.asSharedFlow()
+
     private val _connection = MutableStateFlow(ConnectionState.Disconnected)
     val connection: StateFlow<ConnectionState> = _connection.asStateFlow()
 
@@ -87,10 +97,24 @@ class RelayMessagingHub private constructor(context: Context) {
         val maxDetached = preferences.getMaxBackgroundSessions()
         val maxRepos = maxDetached + 1
         while (repositories.size >= maxRepos) {
-            val victim = synchronized(detachedSessions) { detachedSessions.keys.firstOrNull() }
-                ?: break
-            leaveRoom(victim)
+            if (evictOldestDetachedForCapacity() == null) break
         }
+    }
+
+    fun updateSessionDisplayName(roomId: String, displayName: String) {
+        val trimmed = displayName.trim()
+        if (trimmed.isEmpty()) return
+        activeSession?.takeIf { it.roomId == roomId }?.let {
+            activeSession = it.copy(peerDisplayName = trimmed)
+        }
+        synchronized(detachedSessions) {
+            detachedSessions[roomId]?.let { session ->
+                detachedSessions[roomId] = session.copy(peerDisplayName = trimmed)
+            }
+        }
+        publishDetachedSessions()
+        persistDetachedSessions()
+        syncForegroundService()
     }
 
     /** 进入聊天页：绑定前台会话，不断开其他 detached 房间的 transport。 */
@@ -110,16 +134,16 @@ class RelayMessagingHub private constructor(context: Context) {
     fun detachSession() {
         val session = activeSession ?: return
         activeSession = null
+        val evictedSessions = mutableListOf<ChatSession>()
         synchronized(detachedSessions) {
             detachedSessions.remove(session.roomId)
             val maxDetached = preferences.getMaxBackgroundSessions()
             while (detachedSessions.size >= maxDetached) {
-                val eldest = detachedSessions.keys.firstOrNull() ?: break
-                detachedSessions.remove(eldest)
-                evictRepository(eldest)
+                removeOldestDetachedLocked()?.let { evictedSessions += it } ?: break
             }
             detachedSessions[session.roomId] = session
         }
+        evictedSessions.forEach { finalizeDetachedEviction(it) }
         publishDetachedSessions()
         persistDetachedSessions()
         syncForegroundService()
@@ -204,14 +228,14 @@ class RelayMessagingHub private constructor(context: Context) {
     }
 
     fun trimDetachedToCap() {
+        val evictedSessions = mutableListOf<ChatSession>()
         synchronized(detachedSessions) {
             val maxDetached = preferences.getMaxBackgroundSessions()
             while (detachedSessions.size > maxDetached) {
-                val eldest = detachedSessions.keys.firstOrNull() ?: break
-                detachedSessions.remove(eldest)
-                evictRepository(eldest)
+                removeOldestDetachedLocked()?.let { evictedSessions += it } ?: break
             }
         }
+        evictedSessions.forEach { finalizeDetachedEviction(it) }
         publishDetachedSessions()
         persistDetachedSessions()
         syncForegroundService()
@@ -329,6 +353,33 @@ class RelayMessagingHub private constructor(context: Context) {
         repositories.values.any { repo ->
             repo.connection.value != ConnectionState.Disconnected
         }
+
+    private fun removeOldestDetachedLocked(): ChatSession? {
+        val key = detachedSessions.keys.firstOrNull() ?: return null
+        return detachedSessions.remove(key)
+    }
+
+    private fun finalizeDetachedEviction(evicted: ChatSession) {
+        evictRepository(evicted.roomId)
+        _detachedEvictionEvents.tryEmit(
+            DetachedEvictionEvent(
+                displayName = evicted.peerDisplayName,
+                roomId = evicted.roomId,
+            ),
+        )
+        publishAggregatedDetachedConnection()
+    }
+
+    private fun evictOldestDetachedForCapacity(): ChatSession? {
+        val evicted = synchronized(detachedSessions) {
+            removeOldestDetachedLocked()
+        } ?: return null
+        finalizeDetachedEviction(evicted)
+        publishDetachedSessions()
+        persistDetachedSessions()
+        syncForegroundService()
+        return evicted
+    }
 
     private fun evictRepository(roomId: String) {
         repositories.remove(roomId)?.leaveRoom()

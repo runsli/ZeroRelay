@@ -126,6 +126,12 @@ data class HomeUiState(
     val showSetupContinueBanner: Boolean = false,
     val relayStatusBar: RelayStatusBarState = RelayStatusBarState.NotConfigured,
     val relayHostLabel: String = "",
+    /** 添加联系人后或编辑昵称时显示；null 表示关闭。 */
+    val nicknameDialogContact: Contact? = null,
+    val nicknameDraft: String = "",
+    val nicknameIsEdit: Boolean = false,
+    val searchQuery: String = "",
+    val searchActive: Boolean = false,
 )
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
@@ -252,6 +258,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 refreshHomeConnectionUi()
             }
         }
+        viewModelScope.launch {
+            hub.detachedEvictionEvents.collect { event ->
+                AppSnackbarBus.show(appStr(R.string.snackbar_detached_evicted, event.displayName))
+                refreshHomeConnectionUi()
+            }
+        }
     }
 
     fun onServerUrlChange(value: String) = _uiState.update {
@@ -262,6 +274,74 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectTab(tab: HomeTab) = _uiState.update { it.copy(selectedTab = tab, error = null) }
+
+    fun setSearchActive(active: Boolean) = _uiState.update { it.copy(searchActive = active) }
+
+    fun onSearchQueryChange(query: String) = _uiState.update { it.copy(searchQuery = query) }
+
+    fun clearSearch() = _uiState.update { it.copy(searchQuery = "", searchActive = false) }
+
+    fun filteredConversations(): List<ConversationRowUi> =
+        filterBySearch(_uiState.value.conversations) { it.displayName }
+
+    fun filteredContacts(): List<Contact> =
+        filterBySearch(_uiState.value.contacts) { it.displayName }
+
+    fun filteredGroups(): List<ChatGroup> =
+        filterBySearch(_uiState.value.groups) { it.displayName }
+
+    fun hasSearchQuery(): Boolean = _uiState.value.searchQuery.isNotBlank()
+
+    private fun <T> filterBySearch(items: List<T>, nameSelector: (T) -> String): List<T> {
+        val query = _uiState.value.searchQuery.trim()
+        if (query.isEmpty()) return items
+        return items.filter { nameSelector(it).contains(query, ignoreCase = true) }
+    }
+
+    fun openEditNickname(contact: Contact) {
+        _uiState.update {
+            it.copy(
+                nicknameDialogContact = contact,
+                nicknameDraft = contact.displayName,
+                nicknameIsEdit = true,
+                error = null,
+            )
+        }
+    }
+
+    fun onNicknameDraftChange(value: String) = _uiState.update { it.copy(nicknameDraft = value) }
+
+    fun skipNicknameDialog() = _uiState.update {
+        it.copy(nicknameDialogContact = null, nicknameDraft = "", nicknameIsEdit = false)
+    }
+
+    fun confirmNicknameDialog() {
+        val contact = _uiState.value.nicknameDialogContact ?: return
+        saveContactNickname(contact.id, _uiState.value.nicknameDraft)
+        skipNicknameDialog()
+    }
+
+    private fun promptNicknameDialog(contact: Contact) {
+        _uiState.update {
+            it.copy(
+                nicknameDialogContact = contact,
+                nicknameDraft = contact.displayName,
+                nicknameIsEdit = false,
+                error = null,
+            )
+        }
+    }
+
+    private fun saveContactNickname(contactId: String, displayName: String) {
+        val identity = _uiState.value.identity ?: return
+        val updated = identityStore.updateContactDisplayName(contactId, displayName) ?: return
+        hub.registerContactConversation(identity, updated)
+        val peerKey = IdentityCrypto.decodePublicKey(updated.publicKeyBase64)
+        val roomId = IdentityCrypto.deriveRoomId(identity.publicKey, peerKey)
+        hub.updateSessionDisplayName(roomId, updated.displayName)
+        refreshContacts()
+        refreshHomeConnectionUi()
+    }
 
     fun saveServerUrl() {
         val url = ServerUrl.normalize(_uiState.value.serverUrl)
@@ -521,6 +601,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             hub.registerContactConversation(identity, contact)
             refreshContacts()
             _uiState.update { it.copy(showPasteDialog = false, pasteText = "", error = null) }
+            promptNicknameDialog(contact)
             true
         } catch (e: Exception) {
             _uiState.update { it.copy(error = e.message ?: appStr(R.string.error_add_failed)) }

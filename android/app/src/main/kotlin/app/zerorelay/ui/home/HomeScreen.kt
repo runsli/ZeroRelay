@@ -20,11 +20,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material3.AlertDialog
@@ -45,6 +47,8 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -391,6 +395,57 @@ fun HomeScreen(
         )
     }
 
+    state.nicknameDialogContact?.let { contact ->
+        AlertDialog(
+            onDismissRequest = viewModel::skipNicknameDialog,
+            title = {
+                Text(
+                    if (state.nicknameIsEdit) {
+                        stringResource(R.string.contact_nickname_dialog_title_edit)
+                    } else {
+                        stringResource(R.string.contact_nickname_dialog_title)
+                    },
+                )
+            },
+            text = {
+                Column {
+                    if (!state.nicknameIsEdit) {
+                        Text(
+                            stringResource(R.string.contact_nickname_dialog_body),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(12.dp))
+                    }
+                    OutlinedTextField(
+                        value = state.nicknameDraft,
+                        onValueChange = viewModel::onNicknameDraftChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.contact_nickname_hint)) },
+                        singleLine = true,
+                        shape = InputFieldShape,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::confirmNicknameDialog) {
+                    Text(stringResource(R.string.contact_nickname_save))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::skipNicknameDialog) {
+                    Text(
+                        if (state.nicknameIsEdit) {
+                            stringResource(R.string.action_cancel)
+                        } else {
+                            stringResource(R.string.contact_nickname_skip)
+                        },
+                    )
+                }
+            },
+        )
+    }
+
     if (state.showPasteDialog) {
         AlertDialog(
             onDismissRequest = viewModel::closePasteDialog,
@@ -605,7 +660,15 @@ private fun HomeMainList(
                 modifier = Modifier.padding(bottom = 12.dp),
             )
         }
-        if (showTabs && onSelectTab != null) {
+        HomeSearchBar(
+            query = state.searchQuery,
+            active = state.searchActive,
+            onQueryChange = viewModel::onSearchQueryChange,
+            onActiveChange = viewModel::setSearchActive,
+            onClear = viewModel::clearSearch,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        if (showTabs && onSelectTab != null && !viewModel.hasSearchQuery()) {
             PrimaryTabRow(selectedTabIndex = state.selectedTab.ordinal) {
                 Tab(
                     selected = state.selectedTab == HomeTab.Conversations,
@@ -625,37 +688,179 @@ private fun HomeMainList(
             }
             Spacer(Modifier.height(12.dp))
         }
-        when (state.selectedTab) {
-            HomeTab.Conversations -> ConversationsTab(
-                conversations = state.conversations,
-                serverConfigured = state.serverConfigured && state.serverTested,
+        if (viewModel.hasSearchQuery()) {
+            HomeSearchResults(
+                query = state.searchQuery.trim(),
+                conversations = viewModel.filteredConversations(),
+                contacts = viewModel.filteredContacts(),
+                groups = viewModel.filteredGroups(),
+                allContacts = state.contacts,
+                openContactChat = openContactChat,
                 onOpenConversation = onOpenConversation,
-                onShowAddSheet = onShowAddSheet,
-                onShowMyQr = viewModel::openMyQr,
-                onConfigureRelay = {
-                    if (state.showSetupContinueBanner) {
-                        viewModel.reopenOnboarding()
-                    } else {
-                        onOpenSettings()
+                onOpenGroupChat = { viewModel.createGroupSession(it)?.let(onOpenChat) },
+                onEditNickname = viewModel::openEditNickname,
+                onDeleteContact = viewModel::deleteContact,
+                onVerifyContact = viewModel::markContactVerified,
+                onDeleteGroup = viewModel::deleteGroup,
+                onShowInvite = viewModel::showGroupInvite,
+            )
+        } else {
+            when (state.selectedTab) {
+                HomeTab.Conversations -> ConversationsTab(
+                    conversations = state.conversations,
+                    serverConfigured = state.serverConfigured && state.serverTested,
+                    onOpenConversation = onOpenConversation,
+                    onShowAddSheet = onShowAddSheet,
+                    onShowMyQr = viewModel::openMyQr,
+                    onConfigureRelay = {
+                        if (state.showSetupContinueBanner) {
+                            viewModel.reopenOnboarding()
+                        } else {
+                            onOpenSettings()
+                        }
+                    },
+                )
+                HomeTab.Contacts -> ContactsTab(
+                    contacts = state.contacts,
+                    onOpenChat = { openContactChat(it) },
+                    onDelete = viewModel::deleteContact,
+                    onVerify = viewModel::markContactVerified,
+                    onEditNickname = viewModel::openEditNickname,
+                    onScanQr = onScanQr,
+                    onPasteInvite = viewModel::openPasteDialog,
+                )
+                HomeTab.Groups -> GroupsTab(
+                    groups = state.groups,
+                    contacts = state.contacts,
+                    onOpenChat = { viewModel.createGroupSession(it)?.let(onOpenChat) },
+                    onDelete = viewModel::deleteGroup,
+                    onShowInvite = viewModel::showGroupInvite,
+                    onCreateGroup = viewModel::openCreateGroup,
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HomeSearchBar(
+    query: String,
+    active: Boolean,
+    onQueryChange: (String) -> Unit,
+    onActiveChange: (Boolean) -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    SearchBar(
+        modifier = modifier.fillMaxWidth(),
+        inputField = {
+            SearchBarDefaults.InputField(
+                query = query,
+                onQueryChange = onQueryChange,
+                onSearch = { onActiveChange(false) },
+                expanded = active,
+                onExpandedChange = onActiveChange,
+                placeholder = { Text(stringResource(R.string.home_search_placeholder)) },
+                leadingIcon = {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = stringResource(R.string.cd_search),
+                    )
+                },
+                trailingIcon = if (query.isNotEmpty()) {
+                    {
+                        IconButton(onClick = onClear) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = stringResource(R.string.cd_clear_search),
+                            )
+                        }
                     }
+                } else {
+                    null
                 },
             )
-            HomeTab.Contacts -> ContactsTab(
-                contacts = state.contacts,
-                onOpenChat = { openContactChat(it) },
-                onDelete = viewModel::deleteContact,
-                onVerify = viewModel::markContactVerified,
-                onScanQr = onScanQr,
-                onPasteInvite = viewModel::openPasteDialog,
-            )
-            HomeTab.Groups -> GroupsTab(
-                groups = state.groups,
-                contacts = state.contacts,
-                onOpenChat = { viewModel.createGroupSession(it)?.let(onOpenChat) },
-                onDelete = viewModel::deleteGroup,
-                onShowInvite = viewModel::showGroupInvite,
-                onCreateGroup = viewModel::openCreateGroup,
-            )
+        },
+        expanded = active,
+        onExpandedChange = onActiveChange,
+    ) {}
+}
+
+@Composable
+private fun HomeSearchResults(
+    query: String,
+    conversations: List<ConversationRowUi>,
+    contacts: List<Contact>,
+    groups: List<ChatGroup>,
+    allContacts: List<Contact>,
+    openContactChat: (Contact) -> Unit,
+    onOpenConversation: (ConversationRowUi) -> Unit,
+    onOpenGroupChat: (ChatGroup) -> Unit,
+    onEditNickname: (Contact) -> Unit,
+    onDeleteContact: (String) -> Unit,
+    onVerifyContact: (String) -> Unit,
+    onDeleteGroup: (String) -> Unit,
+    onShowInvite: (ChatGroup) -> Unit,
+) {
+    if (conversations.isEmpty() && contacts.isEmpty() && groups.isEmpty()) {
+        EmptyHint(
+            title = stringResource(R.string.home_search_empty, query),
+            subtitle = stringResource(R.string.home_search_empty_subtitle),
+        )
+        return
+    }
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (conversations.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.home_search_section_conversations),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
+                )
+            }
+            items(conversations, key = { "conv-${it.roomId}" }) { row ->
+                ConversationRow(row = row, onClick = { onOpenConversation(row) })
+            }
+        }
+        if (contacts.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.home_search_section_contacts),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                )
+            }
+            items(contacts, key = { "contact-${it.id}" }) { contact ->
+                ContactRow(
+                    contact = contact,
+                    onClick = { openContactChat(contact) },
+                    onDelete = { onDeleteContact(contact.id) },
+                    onVerify = { onVerifyContact(contact.id) },
+                    onEditNickname = { onEditNickname(contact) },
+                )
+            }
+        }
+        if (groups.isNotEmpty()) {
+            item {
+                Text(
+                    stringResource(R.string.home_search_section_groups),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                )
+            }
+            items(groups, key = { "group-${it.id}" }) { group ->
+                GroupRow(
+                    group = group,
+                    contacts = allContacts,
+                    onClick = { onOpenGroupChat(group) },
+                    onInvite = { onShowInvite(group) },
+                    onDelete = { onDeleteGroup(group.id) },
+                )
+            }
         }
     }
 }
@@ -801,6 +1006,7 @@ private fun ContactsTab(
     onOpenChat: (Contact) -> Unit,
     onDelete: (String) -> Unit,
     onVerify: (String) -> Unit,
+    onEditNickname: (Contact) -> Unit,
     onScanQr: () -> Unit,
     onPasteInvite: () -> Unit,
 ) {
@@ -821,6 +1027,7 @@ private fun ContactsTab(
                     onClick = { onOpenChat(contact) },
                     onDelete = { onDelete(contact.id) },
                     onVerify = { onVerify(contact.id) },
+                    onEditNickname = { onEditNickname(contact) },
                 )
             }
         }
@@ -1089,9 +1296,11 @@ private fun ContactRow(
     onClick: () -> Unit,
     onDelete: () -> Unit,
     onVerify: () -> Unit,
+    onEditNickname: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val markVerifiedLabel = stringResource(R.string.home_menu_mark_verified)
+    val editNicknameLabel = stringResource(R.string.home_menu_edit_nickname)
     val deleteContactLabel = stringResource(R.string.home_menu_delete_contact)
     Surface(
         modifier = Modifier
@@ -1137,6 +1346,7 @@ private fun ContactRow(
             trailingContent = {
                 HomeListOverflowMenu(
                     items = buildList {
+                        add(editNicknameLabel to onEditNickname)
                         if (!contact.verified) add(markVerifiedLabel to onVerify)
                         add(deleteContactLabel to onDelete)
                     },

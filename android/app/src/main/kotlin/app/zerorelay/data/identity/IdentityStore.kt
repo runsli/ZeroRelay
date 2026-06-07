@@ -116,6 +116,23 @@ class IdentityStore(context: Context) {
         saveContacts(getContacts().filter { it.id != id })
     }
 
+    fun updateContactDisplayName(id: String, displayName: String): Contact? {
+        val existing = findContact(id) ?: return null
+        val trimmed = displayName.trim()
+        val name = trimmed.ifBlank { existing.fingerprint }
+        var updated: Contact? = null
+        saveContacts(
+            getContacts().map { contact ->
+                if (contact.id == id) {
+                    contact.copy(displayName = name).also { updated = it }
+                } else {
+                    contact
+                }
+            },
+        )
+        return updated
+    }
+
     fun findContact(id: String): Contact? = getContacts().firstOrNull { it.id == id }
 
     fun markContactVerified(id: String) {
