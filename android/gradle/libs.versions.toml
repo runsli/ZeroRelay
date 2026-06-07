@@ -11,7 +11,7 @@ security = "1.1.0-alpha06"
 bouncycastle = "1.78.1"
 zxing = "3.5.3"
 camerax = "1.4.1"
-room = "2.7.1"
+room = "2.8.4"
 ksp = "2.3.4"
 sqlcipher = "4.6.1"
 
